@@ -54,7 +54,7 @@ export const views = {
         <div class="btns" style="margin-top:12px"><button class="btn" data-go="openPOForm" data-id="${h(id)}">${ic('edit')}Ubah</button><button class="btn danger" data-act="hapus">${ic('trash')}Hapus</button></div>`;
     },
     actions: {
-      promo: (b, e, ctx) => bukaTeksPromo('Promosi open PO', teksOpenPO(ctx.S.get('openPO', cur))),
+      promo: (b, e, ctx) => bukaTeksPromo('Promosi open PO', teksOpenPO(ctx.S.get('openPO', cur)), '', D.infoOpenPO(ctx.S.get('openPO', cur)).baris.map((k) => ctx.S.get('produk', ctx.S.get('varian', k.varianId)?.produkId)?.fotoId)),
       hapus: async (b, e, ctx) => {
         if (!(await konfirmasi('Hapus open PO?', 'Pesanan yang sudah masuk tetap ada.', { ya: 'Hapus', bahaya: true }))) return;
         ctx.S.putMany([['openPO', { ...ctx.S.get('openPO', cur), deleted: true }], ...ctx.S.where('kuotaPO', 'openPOId', cur).map((k) => ['kuotaPO', { ...k, deleted: true }])]);

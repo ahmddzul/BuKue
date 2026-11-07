@@ -2,6 +2,7 @@
 import { SEMUA, kalimatBerikut } from './kalimat.js';
 export { SEMUA };
 import { h, ic, kurangiGerak } from './util.js';
+import { etalase, sprinkle } from './ilustrasi.js';
 
 export function sapaWaktu(d = new Date()) {
   const j = d.getHours();
@@ -17,8 +18,9 @@ export function tampilkanSplash(nama) {
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-label', 'Layar pembuka');
   const sapa = nama ? `${sapaWaktu()}, ${h(nama)} 👋` : `${sapaWaktu()}! 👋`;
-  el.innerHTML = `<div class="splash-in">
-      <img src="icons/icon-192.png" alt="" width="96" height="96" class="splash-logo">
+  el.innerHTML = `${sprinkle(110, 64, 'spl-a')}${sprinkle(110, 64, 'spl-b')}<div class="splash-in">
+      <img src="icons/icon-192.png" alt="" width="72" height="72" class="splash-logo">
+      ${etalase()}
       <p class="splash-sapa">${sapa}</p>
       <p class="splash-kalimat">${h(kalimatBerikut())}</p>
     </div>

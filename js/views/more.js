@@ -8,6 +8,7 @@ import { tawarkanUpdateHpp } from './products.js';
 import { qrisLokal, simpanQrisLokal } from '../qris.js';
 import { prefs, apiPublik, VERSI_APP } from '../shared.js';
 import { tampilkanSplash, SEMUA } from '../splash.js';
+import { etalase, sprinkle } from '../ilustrasi.js';
 
 const { num } = C;
 const IG = 'https://instagram.com/ahmddzul';
@@ -33,6 +34,7 @@ export const views = {
       const kiriman = S.all('pesanan').filter((x) => x.cara && x.cara !== 'ambil' && !['selesai', 'batal'].includes(x.status)).length;
       const akun = ctx.akun;
       return `
+        <div class="menu-hero">${sprinkle(70, 40)}${sprinkle(70, 40, 'kanan')}${etalase()}<h2>${h(D.setelan().namaToko || 'BuKue')}</h2><p>Catatan dapur kue kamu</p></div>
         <div class="list">
           ${menuItem('bahan', 'sack', 'Bahan baku', `${S.all('bahan').length} bahan dan harganya`)}
           ${menuItem('customers', 'users', 'Pelanggan', `${S.all('pelanggan').length} pelanggan`)}

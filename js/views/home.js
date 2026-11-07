@@ -1,6 +1,7 @@
 import { h, ic, rp, angka, tgl, namaBulan, singkatBulan, hitungNaik, inisial } from '../util.js';
 import * as D from '../data.js';
 import { addDays } from '../calc.js';
+import { ilus, sprinkle } from '../ilustrasi.js';
 import { chips, kosong, tagBayar } from './ui.js';
 
 let per = { jenis: '30', off: 0 };
@@ -49,8 +50,8 @@ export const views = {
       const nama = (st.namaPemilik || '').trim();
       const sapa = nama ? `${sapaWaktu()}, ${h(nama)} 👋` : 'Halo! 👋';
       const kosongTotal = !S.all('pesanan').length;
-      let out = `<p class="muted small" style="margin:4px 2px 0">${h(D.setelan().namaToko || 'BuKue')}</p>
-        <h2 style="font-size:22px;margin:0 2px 12px;font-weight:800">${sapa}</h2>`;
+      let out = `<div class="hero"><div><p class="muted small" style="margin:4px 0 0">${h(D.setelan().namaToko || 'BuKue')}</p>
+        <h2>${sapa}</h2></div>${ilus('cupcake', 64)}</div>`;
       if (ctx.demo) out += `<div class="banner acc">${ic('phone')}<span class="grow">Mode coba. Data contoh ini hanya ada di HP ini.</span><button class="btn sm" data-act="akhiriCoba">Pakai akun</button></div>`;
 
       if (kosongTotal) {
@@ -63,6 +64,7 @@ export const views = {
       const pager = per.jenis === 'bulan' || per.jenis === 'tahun';
       out += chips('periode', [['7', '7 hari'], ['30', '30 hari'], ['bulan', 'Bulanan'], ['tahun', 'Tahunan'], ['semua', 'Semua']], per.jenis, { bawaan: '30', label: 'Periode laporan', wrap: false });
       out += `<section class="profit" aria-label="Untung">
+        <div class="orn" aria-hidden="true">${sprinkle(64, 38)}${ilus('irisan', 64)}</div>
         <div class="lbl">Untung · ${h(labelPer(L.r))}</div>
         <div class="big num" id="angka-untung">${rp(L.untung)}</div>
         <div class="meta"><span>${L.nSelesai} pesanan selesai</span><span>${angka(L.pcsSelesai)} item</span><span>Omzet ${rp(L.omzetSelesai)}</span>${L.rugi ? `<span>Rugi sisa ${rp(L.rugi)}</span>` : ''}</div>
@@ -84,7 +86,7 @@ export const views = {
       // Hari ini
       const t = D.today();
       const j1 = D.jadwal(t), j2 = D.jadwal(addHari(t, 1));
-      out += `<div class="sec"><span>Produksi</span><button class="link" data-act="keProduksi">Lihat jadwal</button></div>
+      out += `<div class="sec"><span>${ilus('loyang', 26, 'mini')}Produksi</span><button class="link" data-act="keProduksi">Lihat jadwal</button></div>
         <div class="grid-2c">${kartuJadwal('Hari ini', t, j1)}${kartuJadwal('Besok', addHari(t, 1), j2)}</div>`;
 
       const ambil = S.all('pesanan').filter((p) => p.tglAmbil === t && !['batal', 'selesai', 'diambil'].includes(p.status));
@@ -124,12 +126,12 @@ export const views = {
       }
 
       if (L.laku.length) {
-        out += `<div class="grid-2c"><div><div class="sec"><span>Paling laku</span></div><div class="list">${L.laku.map((x, i) => `<div class="item"><div class="av">${i + 1}</div><div class="grow"><div class="t ell">${h(x.nama)}</div><div class="s">${angka(x.qty)} terjual</div></div></div>`).join('')}</div></div>
-          <div><div class="sec"><span>Paling cuan</span></div><div class="list">${L.cuan.map((x, i) => `<div class="item"><div class="av">${i + 1}</div><div class="grow"><div class="t ell">${h(x.nama)}</div><div class="s">Untung ${rp(x.untung)}</div></div></div>`).join('')}</div></div></div>`;
+        out += `<div class="grid-2c"><div><div class="sec"><span>${ilus('kue', 26, 'mini')}Paling laku</span></div><div class="list">${L.laku.map((x, i) => `<div class="item"><div class="av">${i + 1}</div><div class="grow"><div class="t ell">${h(x.nama)}</div><div class="s">${angka(x.qty)} terjual</div></div></div>`).join('')}</div></div>
+          <div><div class="sec"><span>${ilus('toples', 26, 'mini')}Paling cuan</span></div><div class="list">${L.cuan.map((x, i) => `<div class="item"><div class="av">${i + 1}</div><div class="grow"><div class="t ell">${h(x.nama)}</div><div class="s">Untung ${rp(x.untung)}</div></div></div>`).join('')}</div></div></div>`;
       }
       const setia = D.pelangganSetia(5);
       if (setia.length) {
-        out += `<div class="sec"><span>Pelanggan setia</span></div><div class="list">${setia.map((x) => `<button class="item" data-go="customer" data-id="${h(x.id)}"><div class="av">${h(inisial(x.pel.nama))}</div><div class="grow"><div class="t ell">${h(x.pel.nama)}</div><div class="s">${x.n} pesanan</div></div><div class="r num">${rp(x.total)}</div></button>`).join('')}</div>`;
+        out += `<div class="sec"><span>${ilus('irisan', 26, 'mini')}Pelanggan setia</span></div><div class="list">${setia.map((x) => `<button class="item" data-go="customer" data-id="${h(x.id)}"><div class="av">${h(inisial(x.pel.nama))}</div><div class="grow"><div class="t ell">${h(x.pel.nama)}</div><div class="s">${x.n} pesanan</div></div><div class="r num">${rp(x.total)}</div></button>`).join('')}</div>`;
       }
       return out;
     },

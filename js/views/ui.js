@@ -1,6 +1,9 @@
 import { h, ic, rp } from '../util.js';
 import { num } from '../calc.js';
 import { labelStatus } from '../data.js';
+import { ilus } from '../ilustrasi.js';
+
+const ILUS_KOSONG = { receipt: 'cupcake', cake: 'kue', book: 'mangkuk', sack: 'karung', box: 'toples', basket: 'keranjang', users: 'irisan', oven: 'loyang', calendar: 'kalender', truck: 'keranjang' };
 
 // Chip pilihan tunggal. Ketuk lagi untuk membatalkan (kembali ke bawaan kalau ada).
 export function chips(name, opsi, nilai, { bawaan = '', label = '', wrap = true } = {}) {
@@ -31,7 +34,7 @@ export const money = (name, value, { id = name, placeholder = '0', attrs = '' } 
   `<div class="money"><input type="number" inputmode="numeric" min="0" step="any" id="${h(id)}" name="${h(name)}" value="${value === '' || value === undefined || value === null ? '' : h(num(value))}" placeholder="${placeholder}" ${attrs}></div>`;
 
 export function kosong(icon, judul, teks, tombol = '') {
-  return `<div class="empty">${ic(icon)}<div><b>${h(judul)}</b></div><p>${h(teks)}</p>${tombol}</div>`;
+  return `<div class="empty">${ILUS_KOSONG[icon] ? ilus(ILUS_KOSONG[icon], 120) : ic(icon)}<div><b>${h(judul)}</b></div><p>${h(teks)}</p>${tombol}</div>`;
 }
 
 export function tagBayar(sb) {

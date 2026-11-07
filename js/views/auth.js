@@ -4,6 +4,7 @@ import { sesi, webAppUrl } from '../shared.js';
 import { createApi } from '../store.js';
 import { field } from './ui.js';
 import { kredit } from './more.js';
+import { etalase, sprinkle } from '../ilustrasi.js';
 
 let layar = 'awal';
 
@@ -27,7 +28,8 @@ export function authView(root, ctx) {
   const tampil = () => {
     let isi = '';
     if (layar === 'awal') {
-      isi = `<div class="brand">${logo()}<h1>BuKue</h1><p>Catat PO, hitung HPP, tagih pakai QRIS.</p></div>
+      isi = `<div class="brand" style="position:relative">${sprinkle(80, 46, 'auth-spr')}${logo()}<h1>BuKue</h1><p>Catat PO, hitung HPP, tagih pakai QRIS.</p></div>
+        ${etalase('auth-etalase')}
         <div style="display:grid;gap:10px">
           <button class="btn pri block" data-a="masuk">${ic('user')}Masuk</button>
           <button class="btn block" data-a="daftar">${ic('plus')}Buat akun baru</button>

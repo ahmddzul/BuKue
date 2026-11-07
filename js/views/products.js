@@ -2,6 +2,14 @@ import { h, ic, rp, angka, toast, openSheet, closeSheet, konfirmasi } from '../u
 import * as C from '../calc.js';
 import * as D from '../data.js';
 import { chips, field, money, kosong, kv, formData } from './ui.js';
+import { ilus } from '../ilustrasi.js';
+import { fotoUrl, simpanFoto } from '../foto.js';
+import { kecilkanGambar } from '../util.js';
+
+export function avProduk(p) {
+  const f = p?.fotoId ? fotoUrl(p.fotoId) : '';
+  return f ? `<div class="av foto"><img src="${f}" alt="" width="40" height="40" loading="lazy"></div>` : `<div class="av ilus-av">${ilus(p?.jenis === 'titipan' ? 'keranjang' : 'kue', 34)}</div>`;
+}
 
 const { num } = C;
 let seg = 'produk';
@@ -155,7 +163,7 @@ export const views = {
         if (!rs.length) return out + kosong('book', 'Belum ada resep', S.all('bahan').length ? 'Buat resep dari bahan yang sudah dicatat, HPP-nya langsung terhitung.' : 'Isi daftar bahan dulu, lalu buat resep.', `<div class="btns">${S.all('bahan').length ? '' : `<button class="btn" data-go="bahan">${ic('sack')}Bahan baku</button>`}<button class="btn pri" data-go="recipeForm">${ic('plus')}Buat resep</button></div>`);
         return out + `<div class="list stagger">${rs.map((r, k) => {
           const x = D.hitungResepId(r.id);
-          return `<button class="item" style="--i:${k}" data-go="recipeForm" data-id="${h(r.id)}"><div class="av">${ic('book')}</div><div class="grow"><div class="t ell">${h(r.nama)}</div><div class="s">${angka(r.hasil, 2)} ${h(r.satuanHasil || 'pcs')} per adonan</div></div><div class="r"><div class="num" style="font-weight:700">${rp(x?.hppPcs || 0)}</div><div class="s">per ${h(r.satuanHasil || 'pcs')}</div></div></button>`;
+          return `<button class="item" style="--i:${k}" data-go="recipeForm" data-id="${h(r.id)}"><div class="av ilus-av">${ilus('mangkuk', 34)}</div><div class="grow"><div class="t ell">${h(r.nama)}</div><div class="s">${angka(r.hasil, 2)} ${h(r.satuanHasil || 'pcs')} per adonan</div></div><div class="r"><div class="num" style="font-weight:700">${rp(x?.hppPcs || 0)}</div><div class="s">per ${h(r.satuanHasil || 'pcs')}</div></div></button>`;
         }).join('')}</div>`;
       }
       const ps = S.all('produk').sort((a, b) => a.nama.localeCompare(b.nama));
@@ -167,7 +175,7 @@ export const views = {
         const hpp = v0 ? D.hppVarian(v0, p) : 0;
         const m = v0 && num(v0.harga) > 0 && hpp > 0 ? Math.round(((num(v0.harga) - hpp) / num(v0.harga)) * 100) : null;
         const range = harga.length ? (Math.min(...harga) === Math.max(...harga) ? rp(harga[0]) : `${rp(Math.min(...harga))} - ${rp(Math.max(...harga))}`) : 'Belum ada harga';
-        return `<button class="item" style="--i:${k}" data-go="productForm" data-id="${h(p.id)}"><div class="av">${ic('cake')}</div>
+        return `<button class="item" style="--i:${k}" data-go="productForm" data-id="${h(p.id)}">${avProduk(p)}
           <div class="grow"><div class="t ell">${h(p.nama)} ${p.jenis === 'titipan' ? '<span class="tag acc">Titipan</span>' : ''}</div><div class="s ell">${vs.length} varian · per ${h(p.satuan || 'pcs')}${m !== null ? ` · margin ${m}%` : ''}</div></div>
           <div class="r num small" style="font-weight:700">${range}</div></button>`;
       }).join('')}</div>`;
@@ -190,6 +198,12 @@ export const views = {
       const satuanList = D.SATUAN_PRODUK.includes(d.satuan) || !d.satuan ? D.SATUAN_PRODUK : [...D.SATUAN_PRODUK, d.satuan];
       return `<form novalidate>
         <div class="card">
+          <div class="field"><span class="lbl2">Foto produk (opsional)</span>
+            ${d.fotoId && fotoUrl(d.fotoId) ? `<img class="foto-prev" src="${fotoUrl(d.fotoId)}" alt="Foto ${h(d.nama || 'produk')}" width="280" height="280">` : `<div class="foto-prev" style="display:grid;place-items:center">${ilus(d.jenis === 'titipan' ? 'keranjang' : 'kue', 140)}</div>`}
+            <div class="btns"><label class="btn" for="p-foto">${ic('image')}${d.fotoId ? 'Ganti foto' : 'Pilih foto'}</label>${d.fotoId ? '<button type="button" class="btn danger" data-act="hapusFoto">Hapus foto</button>' : ''}</div>
+            <input type="file" id="p-foto" accept="image/*" class="sr">
+            <div class="hint">Foto diperkecil otomatis supaya hemat kuota. Bisa ambil dari galeri atau kamera.</div>
+          </div>
           ${field('Nama produk', `<input type="text" id="p-nama" name="nama" value="${h(d.nama || '')}" required placeholder="Misal: Nastar, Brownies">`, { id: 'p-nama' })}
           <div class="field"><span class="lbl2">Jenis</span>${chips('jenis', [['sendiri', 'Buatan sendiri'], ['titipan', 'Titipan']], d.jenis, { bawaan: 'sendiri', label: 'Jenis produk' })}</div>
           ${d.jenis === 'titipan' ? (() => {
@@ -217,8 +231,26 @@ export const views = {
       if (el.name === 'satuanLain' && el.value.trim()) form.querySelectorAll('[data-chipgroup="satuan"] [data-chip]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
       infoVarian(form);
     },
-    change(el, ctx) { views.productForm.input(el, ctx); },
+    async change(el, ctx) {
+      if (el.id === 'p-foto') {
+        const file = el.files?.[0];
+        if (!file) return;
+        bacaDraftP(el.form || el.closest('form'));
+        try {
+          toast('Menyimpan foto…');
+          const data = await kecilkanGambar(file, 640, 'image/jpeg');
+          draftP.fotoId = await simpanFoto(data);
+          toast('Foto tersimpan');
+        } catch (e) {
+          toast(e?.message === 'Tidak ada koneksi' ? 'Perlu internet untuk mengunggah foto. Coba lagi saat online.' : 'Foto gagal disimpan. Coba gambar lain.', 4000);
+        }
+        ctx.rerender();
+        return;
+      }
+      views.productForm.input(el, ctx);
+    },
     actions: {
+      hapusFoto: (b, e, ctx) => { bacaDraftP(b.closest('form')); draftP.fotoId = ''; ctx.rerender(); },
       tambahVarian: (b, e, ctx) => { bacaDraftP(b.closest('form')); draftP.varian.push({ nama: '' }); ctx.rerender(); setTimeout(() => document.getElementById('vr-n-' + (draftP.varian.length - 1))?.focus(), 50); },
       hapusVarian: (b, e, ctx) => { bacaDraftP(b.closest('form')); draftP.varian.splice(Number(b.dataset.i), 1); if (!draftP.varian.length) draftP.varian.push({ nama: '' }); ctx.rerender(); },
       hapus: async (b, e, ctx) => {
@@ -241,7 +273,7 @@ export const views = {
       if (!vs.length) return toast('Isi minimal satu varian dengan harga');
       const satuan = (d.satuanLain || '').trim() || d.satuan || 'pcs';
       const pid = d.id || 'pr' + Date.now().toString(36);
-      const ops = [['produk', { ...(S.get('produk', pid) || {}), id: pid, nama: d.nama, jenis: d.jenis || 'sendiri', penitipId: d.jenis === 'titipan' ? d.penitipId || '' : '', satuan, umurSimpan: num(d.umurSimpan) || '' }]];
+      const ops = [['produk', { ...(S.get('produk', pid) || {}), id: pid, nama: d.nama, fotoId: d.fotoId || '', jenis: d.jenis || 'sendiri', penitipId: d.jenis === 'titipan' ? d.penitipId || '' : '', satuan, umurSimpan: num(d.umurSimpan) || '' }]];
       const lama = D.varianDari(pid);
       const ids = new Set();
       vs.forEach((v, i) => {

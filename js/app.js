@@ -13,6 +13,7 @@ import { authView } from './views/auth.js';
 import { views as V_STOK } from './views/stok.js';
 import { views as V_PO } from './views/openpo.js';
 import { tampilkanSplash } from './splash.js';
+import { mulaiFoto } from './foto.js';
 
 const LS = localStorage;
 const views = { ...V_HOME, ...V_ORDERS, ...V_PROD, ...V_MORE, ...V_PRODUKSI, ...V_STOK, ...V_PO };
@@ -189,6 +190,10 @@ function bukaStore(s) {
     render(false);
   });
   S.start();
+  mulaiFoto({
+    apiAkun: s.mode === 'coba' ? null : apiPublik(s.url),
+    ketikaSiap: () => { if (current && !current.v.form && !document.querySelector('.sheet-bg')) render(false); },
+  });
 }
 
 export function mulaiAkun({ url, token, akun }) {

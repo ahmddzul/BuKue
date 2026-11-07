@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { createApi } from './store.js';
 
-export const VERSI_APP = '1.0.0';
+export const VERSI_APP = '1.0.1';
 const LS = localStorage;
 
 // ---------- Preferensi per HP ----------

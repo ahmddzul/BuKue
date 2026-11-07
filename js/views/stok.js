@@ -3,6 +3,9 @@ import { num, isiTemplate } from '../calc.js';
 import * as D from '../data.js';
 import { chips, field, money, kosong, kv, formData, tagBayar } from './ui.js';
 import { template } from './orders.js';
+import { avProduk } from './products.js';
+import { fotoUrl } from '../foto.js';
+import { dataUrlKeFile } from '../util.js';
 
 let draftJual = null, draftTerima = null;
 
@@ -81,7 +84,7 @@ export const views = {
       const kd = D.hampirKedaluwarsa(1);
       if (kd.length) out += `<div class="banner">${ic('alert')}<span class="grow">${kd.length} stok mendekati atau lewat kedaluwarsa.</span></div>`;
       list.forEach((s) => {
-        out += `<div class="sec"><span>${h(s.nama)}</span><span class="small muted num">sisa ${angka(s.sisa, 2)}</span></div><div class="list">${s.batch.map((b) => `
+        out += `<div class="sec"><span class="row" style="gap:10px">${avProduk(ctx.S.get('produk', s.produkId))}${h(s.nama)}</span><span class="small muted num">sisa ${angka(s.sisa, 2)}</span></div><div class="list">${s.batch.map((b) => `
           <div class="item"><div class="grow"><div class="t">${angka(b.sisa, 2)} dari ${angka(b.jumlah, 2)} ${labelSisa(b)}</div>
             <div class="s">${b.penitipId ? 'Titipan ' + h(ctx.S.get('penitip', b.penitipId)?.nama || '') + ' · ' : ''}Masuk ${h(tgl(b.tanggal))}${b.kedaluwarsa ? ' · tahan s.d. ' + h(tgl(b.kedaluwarsa, { hari: false })) : ''}</div></div>
             <button class="btn sm" data-act="keluar" data-id="${h(b.id)}">Sisa</button></div>`).join('')}</div>`;
@@ -93,7 +96,7 @@ export const views = {
       promo: (b, e, ctx) => {
         const daftar = D.stokPerVarian().map((s) => `• ${s.nama}: ${rp(hargaVarian(s.varianId, [s]))}`).join('\n');
         const teks = isiTemplate(template('promoReady').teks, { toko: D.setelan().namaToko || '', daftar });
-        bukaTeksPromo('Promosi stok ready', teks);
+        bukaTeksPromo('Promosi stok ready', teks, '', D.stokPerVarian().map((s) => ctx.S.get('produk', s.produkId)?.fotoId));
       },
     },
   },
@@ -375,14 +378,27 @@ function ringkasJual(form) {
   form.querySelector('#ringkas-jual').innerHTML = kv('Total', rp(tot), 'total');
 }
 
-export function bukaTeksPromo(judul, teks, wa = '') {
+export function bukaTeksPromo(judul, teks, wa = '', fotoIds = []) {
+  const fotos = [...new Set(fotoIds.filter(Boolean))].map((id) => fotoUrl(id)).filter(Boolean).slice(0, 4);
+  const files = fotos.map((d, i) => dataUrlKeFile(d, `kue-${i + 1}.jpg`));
+  const bisaFoto = files.length && navigator.canShare && navigator.canShare({ files });
   openSheet({
     html: `<h2 id="sheet-t">${h(judul)}</h2>
       ${field('Teks', `<textarea id="promo-t" rows="10">${h(teks)}</textarea>`, { id: 'promo-t', hint: 'Boleh diubah dulu. Cocok untuk status WhatsApp, Instagram, atau grup.' })}
+      ${bisaFoto ? `<div class="chips wrapc" style="margin-bottom:10px">${fotos.map((f) => `<img src="${f}" alt="" width="56" height="56" style="border-radius:10px;object-fit:cover">`).join('')}</div><button class="btn pri block" data-act="bagiFoto" style="margin-bottom:8px">${ic('image')}Bagikan ${files.length} foto + teks</button>` : ''}
       <div class="btns"><button class="btn" data-act="salin">${ic('copy')}Salin</button>${navigator.share ? `<button class="btn" data-act="bagi">${ic('share')}Bagikan</button>` : ''}<button class="btn pri" data-act="wa">${ic('chat')}Buka WhatsApp</button></div>`,
     actions: {
       salin: async (b, e, sh) => { (await salin(sh.querySelector('#promo-t').value)) ? toast('Teks disalin') : toast('Gagal menyalin'); },
       bagi: async (b, e, sh) => { try { await navigator.share({ text: sh.querySelector('#promo-t').value }); } catch {} },
+      bagiFoto: async (b, e, sh) => {
+        const t = sh.querySelector('#promo-t').value;
+        const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+        if (ios) await salin(t);
+        try {
+          await navigator.share({ files, text: t });
+          if (ios) toast('Kalau teksnya tidak ikut, tempel saja. Sudah disalin.', 4500);
+        } catch {}
+      },
       wa: async (b, e, sh) => {
         const t = sh.querySelector('#promo-t').value;
         await salin(t);

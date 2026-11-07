@@ -18,6 +18,21 @@ Bahasa: santai dan kekinian, menyapa dengan "kamu". Tanpa tanda pisah panjang. E
 
 **Tepi bergerigi** seperti kertas alas kue (doily) atau cup kertas muffin. Dipakai di bawah kartu untung Beranda dan di ikon aplikasi. Tidak dipakai di tempat lain supaya tetap istimewa.
 
+## Ilustrasi kue
+
+Satu set ilustrasi garis yang digambar sendiri (`js/ilustrasi.js`): cupcake, kue tingkat, toples nastar, irisan kue, mangkuk dan pengocok, loyang kue kering, karung tepung, keranjang titipan, dan kalender PO. Gayanya sama dengan ikon (garis 2 px, sudut membulat) dan warnanya hanya dari token tema, jadi ikut berganti di 6 tema dan mode gelap. Di mode gelap garisnya memakai `--on-acc` supaya bentuknya tetap tegas di latar gelap.
+
+| Tempat | Ilustrasi | Alasan |
+|---|---|---|
+| Layar pembuka, halaman masuk, kartu atas Lainnya | Rak etalase (toples, kue tingkat, cupcake) + taburan sprinkle | Kesan pertama: ini toko kue. |
+| Sapaan Beranda | Cupcake | Menghangatkan sapaan tanpa mengganggu angka. |
+| Kartu untung | Irisan kue + sprinkle di pojok kanan atas | Merayakan angka terpenting. Disembunyikan di layar di bawah 360 px supaya angka tidak tertutup. |
+| Judul bagian Beranda dan Produksi | Ilustrasi kecil 26 px | Penanda bagian yang mudah dikenali. |
+| Halaman kosong | Ilustrasi 120 px sesuai isi (pesanan: cupcake, bahan: karung, resep: mangkuk, stok: toples, titipan: keranjang) | Halaman kosong terasa ramah dan jelas isinya nanti apa. |
+| Produk tanpa foto | Kue tingkat atau keranjang (titipan) | Pengganti foto yang tetap bertema. |
+
+Semua ilustrasi adalah SVG di dalam halaman (sekitar 5 KB total), tidak ada file gambar tambahan, dan ditandai `aria-hidden` karena hanya hiasan.
+
 ## Warna
 
 Satu warna aksen pastel per tema, plus netral. Tiga token per tema:

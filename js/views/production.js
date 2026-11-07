@@ -2,6 +2,7 @@ import { h, ic, rp, angka, tgl, tglPanjang, toast, konfeti, openSheet, closeShee
 import { addDays, num, UNIT_LABEL } from '../calc.js';
 import * as D from '../data.js';
 import { chips, kosong, kv, formData } from './ui.js';
+import { ilus } from '../ilustrasi.js';
 
 let tanggal = null;
 
@@ -23,7 +24,7 @@ export const views = {
         const next = S.all('pesanan').filter((p) => p.tglAmbil > tanggal && !['batal', 'selesai', 'diambil'].includes(p.status)).map((p) => p.tglAmbil).sort()[0];
         return out + kosong('oven', 'Tidak ada pesanan', 'Belum ada pesanan aktif yang diambil di tanggal ini.', `<div class="btns">${next ? `<button class="btn" data-act="pilih" data-tgl="${h(next)}">${ic('calendar')}Lihat ${h(tgl(next))}</button>` : ''}<button class="btn" data-act="untukStok">${ic('box')}Produksi untuk stok</button></div>`);
       }
-      out += `<div class="card"><h2>Yang harus dibuat</h2>${j.baris.map((b) => kv(h(b.nama), angka(b.qty, 2))).join('')}</div>`;
+      out += `<div class="card"><h2 class="row" style="gap:8px">${ilus('loyang', 30)}Yang harus dibuat</h2>${j.baris.map((b) => kv(h(b.nama), angka(b.qty, 2))).join('')}</div>`;
       out += `<div class="sec"><span>${j.pesanan.length} pesanan</span></div><div class="list">${j.pesanan.map((p) => {
         const i = D.pesananInfo(p);
         return `<button class="item" data-go="order" data-id="${h(p.id)}"><div class="grow"><div class="t ell">${h(D.namaPel(i.pel))}</div><div class="s ell">${i.items.map((x) => `${h(x.nama)} x${angka(x.qty)}`).join(', ')}</div></div><div class="r small">${h(D.labelStatus(p.status))}${p.jam ? `<div class="muted">${h(p.jam)}</div>` : ''}</div></button>`;
