@@ -1,5 +1,5 @@
 // Ambil dari jaringan dulu untuk file aplikasi, pakai simpanan hanya saat offline.
-const VERSI = '0.1.0';
+const VERSI = '0.1.1';
 const CACHE = 'bukue-' + VERSI;
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'fonts/PlusJakartaSans.woff2',

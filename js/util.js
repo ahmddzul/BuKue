@@ -120,7 +120,13 @@ export function openSheet(opt) {
     if (t.dataset.act === 'close') return closeSheet();
     opt.actions?.[t.dataset.act]?.(t, e, sheet);
   });
-  bg.addEventListener('submit', (e) => { e.preventDefault(); opt.submit?.(e.target, sheet); });
+  bg.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (f._kirim && Date.now() - f._kirim < 1200) return;
+    f._kirim = Date.now();
+    opt.submit?.(f, sheet);
+  });
   bg.addEventListener('input', (e) => opt.input?.(e.target, sheet));
   bg.addEventListener('change', (e) => opt.change?.(e.target, sheet));
   bg.addEventListener('keydown', (e) => {

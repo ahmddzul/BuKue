@@ -2,5 +2,5 @@
 // Kalau diisi, semua HP cukup masuk dengan nama pengguna dan kata sandi.
 // Kalau dikosongkan, aplikasi akan menanyakan link ini sekali di tiap HP.
 export const CONFIG = {
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbybrF-WD_AxAAqLrURM5TOzhFoqG7W44_m_ZsUOFZVaRVW05JHuXdUnMu5ARBDU2iPMCA/exec',
+  webAppUrl: '',
 };

@@ -115,8 +115,12 @@ function renderTop() {
     <button class="iconbtn sync" data-shell="sync" style="width:auto;padding:0 8px" aria-label="Status simpan: ${syncTxt}. Ketuk untuk sinkron sekarang">${ic(syncIco)}<span>${syncTxt}</span></button>`;
 }
 
+// Dipasang sekali saja. #app tetap elemen yang sama walau isinya diganti (masuk, keluar, mode coba).
 function bindShell(app) {
+  if (app.dataset.bound) return;
+  app.dataset.bound = '1';
   app.addEventListener('click', (e) => {
+    if (!S || !current) return;
     const tabBtn = e.target.closest('[data-tab]');
     if (tabBtn) {
       const t = tabBtn.dataset.tab;
@@ -144,12 +148,16 @@ function bindShell(app) {
     if (act && $view().contains(act)) current.v.actions?.[act.dataset.act]?.(act, e, ctx);
   });
   app.addEventListener('submit', (e) => {
-    if (!$view().contains(e.target)) return;
+    if (!S || !current || !$view().contains(e.target)) return;
     e.preventDefault();
-    current.v.submit?.(e.target, ctx, e);
+    // Cegah tersimpan dua kali karena ketukan ganda.
+    const f = e.target;
+    if (f._kirim && Date.now() - f._kirim < 1200) return;
+    f._kirim = Date.now();
+    current.v.submit?.(f, ctx, e);
   });
-  app.addEventListener('input', (e) => { if ($view().contains(e.target)) current.v.input?.(e.target, ctx); });
-  app.addEventListener('change', (e) => { if ($view().contains(e.target)) current.v.change?.(e.target, ctx); });
+  app.addEventListener('input', (e) => { if (S && current && $view().contains(e.target)) current.v.input?.(e.target, ctx); });
+  app.addEventListener('change', (e) => { if (S && current && $view().contains(e.target)) current.v.change?.(e.target, ctx); });
 }
 
 function renderAuth() {
