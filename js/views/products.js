@@ -179,11 +179,11 @@ export const views = {
     form: true,
     enter() { draftP = null; },
     title: (p) => (p.id ? 'Ubah produk' : 'Produk baru'),
-    render({ id }, ctx) {
+    render({ id, penitip }, ctx) {
       const S = ctx.S;
       if (!draftP) {
         const lama = id ? S.get('produk', id) : null;
-        draftP = lama ? { ...lama, varian: D.varianDari(id).map((v) => ({ ...v })) } : { jenis: 'sendiri', satuan: 'pcs', umurSimpan: '', varian: [{ nama: 'Original' }] };
+        draftP = lama ? { ...lama, varian: D.varianDari(id).map((v) => ({ ...v })) } : { jenis: penitip ? 'titipan' : 'sendiri', penitipId: penitip || '', satuan: 'pcs', umurSimpan: '', varian: [{ nama: 'Original' }] };
         if (!draftP.varian.length) draftP.varian.push({ nama: 'Original' });
       }
       const d = draftP;
@@ -192,6 +192,11 @@ export const views = {
         <div class="card">
           ${field('Nama produk', `<input type="text" id="p-nama" name="nama" value="${h(d.nama || '')}" required placeholder="Misal: Nastar, Brownies">`, { id: 'p-nama' })}
           <div class="field"><span class="lbl2">Jenis</span>${chips('jenis', [['sendiri', 'Buatan sendiri'], ['titipan', 'Titipan']], d.jenis, { bawaan: 'sendiri', label: 'Jenis produk' })}</div>
+          ${d.jenis === 'titipan' ? (() => {
+            const pts = S.all('penitip').sort((a, b) => a.nama.localeCompare(b.nama));
+            return pts.length ? field('Penitip', `<select id="p-pen" name="penitipId" required><option value="">Pilih penitip</option>${pts.map((x) => `<option value="${h(x.id)}" ${x.id === d.penitipId ? 'selected' : ''}>${h(x.nama)}</option>`).join('')}</select>`, { id: 'p-pen' })
+              : `<div class="banner">${ic('alert')}<span class="grow">Belum ada penitip. Tambah dulu di Lainnya, Titipan & penitip.</span></div>`;
+          })() : ''}
           <div class="field"><span class="lbl2">Dijual per</span>${chips('satuan', satuanList.map((s) => [s, s]), d.satuan, { bawaan: 'pcs', label: 'Satuan jual' })}
             <input type="text" name="satuanLain" aria-label="Satuan lain" placeholder="Satuan lain, misal: dus" style="margin-top:8px" value=""></div>
           ${field('Umur simpan (hari)', `<input type="number" inputmode="numeric" min="0" id="p-umur" name="umurSimpan" value="${h(d.umurSimpan ?? '')}" placeholder="Misal: 3">`, { id: 'p-umur', hint: 'Dipakai untuk peringatan stok yang hampir kedaluwarsa.' })}
@@ -231,11 +236,12 @@ export const views = {
       bacaDraftP(form);
       const d = draftP;
       if (!d.nama) return toast('Isi nama produk');
+      if (d.jenis === 'titipan' && !d.penitipId) return toast('Pilih penitip untuk produk titipan');
       const vs = d.varian.filter((v) => v.nama || num(v.harga));
       if (!vs.length) return toast('Isi minimal satu varian dengan harga');
       const satuan = (d.satuanLain || '').trim() || d.satuan || 'pcs';
       const pid = d.id || 'pr' + Date.now().toString(36);
-      const ops = [['produk', { ...(S.get('produk', pid) || {}), id: pid, nama: d.nama, jenis: d.jenis || 'sendiri', satuan, umurSimpan: num(d.umurSimpan) || '' }]];
+      const ops = [['produk', { ...(S.get('produk', pid) || {}), id: pid, nama: d.nama, jenis: d.jenis || 'sendiri', penitipId: d.jenis === 'titipan' ? d.penitipId || '' : '', satuan, umurSimpan: num(d.umurSimpan) || '' }]];
       const lama = D.varianDari(pid);
       const ids = new Set();
       vs.forEach((v, i) => {

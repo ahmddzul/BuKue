@@ -65,7 +65,7 @@ export const views = {
       out += `<section class="profit" aria-label="Untung">
         <div class="lbl">Untung · ${h(labelPer(L.r))}</div>
         <div class="big num" id="angka-untung">${rp(L.untung)}</div>
-        <div class="meta"><span>${L.nSelesai} pesanan selesai</span><span>${angka(L.pcsSelesai)} item</span><span>Omzet ${rp(L.omzetSelesai)}</span></div>
+        <div class="meta"><span>${L.nSelesai} pesanan selesai</span><span>${angka(L.pcsSelesai)} item</span><span>Omzet ${rp(L.omzetSelesai)}</span>${L.rugi ? `<span>Rugi sisa ${rp(L.rugi)}</span>` : ''}</div>
         ${pager ? `<div class="glass"><button class="iconbtn" data-act="mundur" aria-label="Periode sebelumnya" style="color:inherit">${ic('back')}</button><span>${h(labelPer(L.r))}</span><button class="iconbtn" data-act="maju" aria-label="Periode berikutnya" style="color:inherit" ${per.off ? '' : 'disabled'}>${ic('next')}</button></div>` : ''}
       </section>`;
 
@@ -99,6 +99,25 @@ export const views = {
           <div class="list">${tag.slice(0, 4).map((x) => itemPesanan(x.p, x.i)).join('')}</div>`;
       }
 
+      const kd = D.hampirKedaluwarsa(1);
+      if (kd.length) {
+        out += `<div class="sec"><span>Stok hampir kedaluwarsa</span><button class="link" data-act="keStok">Stok ready</button></div>
+          <div class="list">${kd.slice(0, 4).map((b) => { const d = D.sisaHari(b); return `<button class="item" data-act="keStok"><div class="grow"><div class="t ell">${h(b.nama)}</div><div class="s">Sisa ${angka(b.sisa, 2)}</div></div><span class="tag ${d <= 0 ? 'bad' : 'warn'}">${d < 0 ? 'Lewat' : d === 0 ? 'Hari ini' : 'Besok'}</span></button>`; }).join('')}</div>`;
+      }
+      const pen = S.all('penitip').map((x) => ({ x, b: D.titipanBelumSetor(x.id) })).filter((y) => y.b.total > 0);
+      if (pen.length) {
+        out += `<div class="sec"><span>Setoran titipan belum dibayar · ${rp(pen.reduce((a, y) => a + y.b.total, 0))}</span></div>
+          <div class="list">${pen.map((y) => `<button class="item" data-go="penitip" data-id="${h(y.x.id)}"><div class="av">${h(inisial(y.x.nama))}</div><div class="grow"><div class="t ell">${h(y.x.nama)}</div><div class="s">${angka(y.b.qty, 2)} terjual · untungmu ${rp(y.b.untung)}</div></div><div class="r num" style="font-weight:700">${rp(y.b.total)}</div></button>`).join('')}</div>`;
+      }
+      const pos = D.openPOAktif();
+      if (pos.length) {
+        out += `<div class="sec"><span>Open PO berjalan</span></div><div class="list">${pos.map((po) => {
+          const i = D.infoOpenPO(po);
+          const k = i.baris.reduce((a, b) => a + b.kuota, 0), t = i.baris.reduce((a, b) => a + b.terpakai, 0);
+          return `<button class="item" data-go="openPO" data-id="${h(po.id)}"><div class="av">${ic('calendar')}</div><div class="grow"><div class="t ell">${h(po.judul || 'Open PO')}</div><div class="s">Order s.d. ${h(tgl(po.batas))}</div></div><div class="r num small" style="font-weight:700">${angka(t)}/${angka(k)}</div></button>`;
+        }).join('')}</div>`;
+      }
+
       if (D.jumlahLunas() >= 10 && !localStorage.getItem('bukue:saweria')) {
         out += `<div class="card" style="border-color:var(--aline)"><div class="row">${ic('coffee')}<div class="grow"><b>Sudah 10 tagihan lunas</b><div class="small muted">Kalau BuKue membantu, boleh traktir kopi pembuatnya. Semua fitur tetap bisa dipakai tanpa dukungan.</div></div></div>
           <div class="btns" style="margin-top:10px"><button class="btn" data-act="nantiSaja">Nanti saja</button><a class="btn pri" href="${SARAN}" target="_blank" rel="noopener" data-act="traktir">Traktir kopi</a></div></div>`;
@@ -128,6 +147,7 @@ export const views = {
       mundur: (b, e, ctx) => { per.off++; views.home._animated = false; ctx.rerender(); },
       maju: (b, e, ctx) => { per.off = Math.max(per.off - 1, 0); views.home._animated = false; ctx.rerender(); },
       keProduksi: (b, e, ctx) => ctx.tab('produksi'),
+      keStok: (b, e, ctx) => ctx.go('stok'),
       lihatTagihan: (b, e, ctx) => { localStorage.setItem('bukue:filterPesanan', 'belum'); ctx.tab('orders'); },
       nantiSaja: (b, e, ctx) => { localStorage.setItem('bukue:saweria', '1'); ctx.rerender(); },
       traktir: (b, e, ctx) => { localStorage.setItem('bukue:saweria', '1'); setTimeout(() => ctx.rerender(), 300); },

@@ -85,6 +85,20 @@ await uji('template: kata kunci kosong menghapus barisnya', () => {
   assert.equal(C.isiTemplate(t, { sapaan: 'Kak', nama: 'Rina', dp: '', sisa: 'Rp 5.000', rekening: '' }), 'Halo Kak Rina\nSisa: Rp 5.000');
 });
 
+console.log('Kalimat penyemangat');
+await uji('120 kalimat, 65/25/10 persen, acak tanpa ulang', async () => {
+  const K = await import('../js/kalimat.js');
+  assert.equal(K.SEDANG.length, 78); assert.equal(K.SANTAI.length, 30); assert.equal(K.FORMAL.length, 12);
+  const { kalimatBerikut, SEMUA } = K;
+  const m = new Map(); const st = { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v) };
+  const lihat = new Set();
+  for (let i = 0; i < SEMUA.length; i++) lihat.add(kalimatBerikut(st));
+  assert.equal(lihat.size, 120, 'semua tampil sekali sebelum ulang');
+  const akhir = JSON.parse(m.get('bukue:kalimat')).urut.at(-1);
+  const pertamaBaru = kalimatBerikut(st);
+  assert.notEqual(pertamaBaru, SEMUA[akhir], 'putaran baru tidak dimulai dengan kalimat terakhir');
+});
+
 console.log('Server dan sinkron dua HP (server tiruan)');
 const srv = buatServer(path.join(dir, '../apps-script/Code.gs'));
 const memStorage = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };
@@ -189,6 +203,15 @@ await uji('kolom baru otomatis ditambahkan', async () => {
   await A.flush();
   const hdr = srv.ss.getSheetByName('Pelanggan').rows[0];
   assert.ok(hdr.includes('kolomBaru'));
+});
+await uji('koleksi baru otomatis jadi tab, tab rahasia tidak bisa ditulis', async () => {
+  srv.post(JSON.stringify({ action: 'push', token: tokenA, ops: [{ col: 'fiturBaru', row: { id: 'x1', updatedAt: 1, isi: 'a' } }, { col: 'akun', row: { id: 'hack', updatedAt: 1 } }, { col: 'stok', row: { id: 's1', updatedAt: 1, jumlah: 5 } }] }));
+  assert.ok(srv.ss.getSheetByName('FiturBaru'));
+  assert.ok(srv.ss.getSheetByName('StokReady'));
+  assert.ok(!srv.ss.getSheetByName('Akun').rows.flat().includes('hack'));
+  const r = srv.post(JSON.stringify({ action: 'pull', token: tokenA, since: 0 }));
+  assert.equal(r.data.fiturBaru[0].isi, 'a');
+  assert.equal(C.num(r.data.stok[0].jumlah), 5);
 });
 await uji('unggah dan ambil gambar QRIS', () => {
   const up = srv.post(JSON.stringify({ action: 'unggah', token: tokenA, nama: 'qris.png', mime: 'image/png', base64: Buffer.from('gambar').toString('base64') }));

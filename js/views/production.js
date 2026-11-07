@@ -1,7 +1,7 @@
-import { h, ic, rp, angka, tgl, tglPanjang, toast, konfeti, konfirmasi } from '../util.js';
+import { h, ic, rp, angka, tgl, tglPanjang, toast, konfeti, openSheet, closeSheet } from '../util.js';
 import { addDays, num, UNIT_LABEL } from '../calc.js';
 import * as D from '../data.js';
-import { chips, kosong, kv } from './ui.js';
+import { chips, kosong, kv, formData } from './ui.js';
 
 let tanggal = null;
 
@@ -21,7 +21,7 @@ export const views = {
       if (!j.baris.length) {
         // Cari tanggal berikutnya yang ada produksi
         const next = S.all('pesanan').filter((p) => p.tglAmbil > tanggal && !['batal', 'selesai', 'diambil'].includes(p.status)).map((p) => p.tglAmbil).sort()[0];
-        return out + kosong('oven', 'Tidak ada produksi', 'Belum ada pesanan aktif yang diambil di tanggal ini.', next ? `<button class="btn" data-act="pilih" data-tgl="${h(next)}">${ic('calendar')}Lihat ${h(tgl(next))}</button>` : '');
+        return out + kosong('oven', 'Tidak ada pesanan', 'Belum ada pesanan aktif yang diambil di tanggal ini.', `<div class="btns">${next ? `<button class="btn" data-act="pilih" data-tgl="${h(next)}">${ic('calendar')}Lihat ${h(tgl(next))}</button>` : ''}<button class="btn" data-act="untukStok">${ic('box')}Produksi untuk stok</button></div>`);
       }
       out += `<div class="card"><h2>Yang harus dibuat</h2>${j.baris.map((b) => kv(h(b.nama), angka(b.qty, 2))).join('')}</div>`;
       out += `<div class="sec"><span>${j.pesanan.length} pesanan</span></div><div class="list">${j.pesanan.map((p) => {
@@ -29,7 +29,8 @@ export const views = {
         return `<button class="item" data-go="order" data-id="${h(p.id)}"><div class="grow"><div class="t ell">${h(D.namaPel(i.pel))}</div><div class="s ell">${i.items.map((x) => `${h(x.nama)} x${angka(x.qty)}`).join(', ')}</div></div><div class="r small">${h(D.labelStatus(p.status))}${p.jam ? `<div class="muted">${h(p.jam)}</div>` : ''}</div></button>`;
       }).join('')}</div>`;
       const belumSiap = j.pesanan.filter((p) => ['baru', 'konfirmasi', 'produksi'].includes(p.status));
-      if (belumSiap.length) out += `<button class="btn pri block" data-act="selesai" style="margin-bottom:12px">${ic('check')}Produksi selesai, tandai ${belumSiap.length} pesanan Siap</button>`;
+      if (belumSiap.length) out += `<button class="btn pri block" data-act="selesai" style="margin-bottom:8px">${ic('check')}Produksi selesai, tandai ${belumSiap.length} pesanan Siap</button>`;
+      out += `<button class="btn block" data-act="untukStok" style="margin-bottom:12px">${ic('box')}Catat produksi untuk stok ready</button>`;
 
       const bl = D.belanja(j.baris);
       const stokAktif = !!D.setelan().stokBahan;
@@ -55,14 +56,38 @@ export const views = {
     },
     actions: {
       pilih: (b, e, ctx) => { tanggal = b.dataset.tgl; ctx.rerender(); },
-      selesai: async (b, e, ctx) => {
+      selesai: (b, e, ctx) => {
         const S = ctx.S;
-        const ps = D.jadwal(tanggal).pesanan.filter((p) => ['baru', 'konfirmasi', 'produksi'].includes(p.status));
-        if (!(await konfirmasi('Tandai pesanan Siap?', `${ps.length} pesanan tanggal ${tgl(tanggal)} akan berubah jadi Siap.`, { ya: 'Tandai Siap' }))) return;
-        S.putMany(ps.map((p) => ['pesanan', { ...p, status: 'siap' }]));
-        konfeti();
-        toast('Produksi selesai. Pesanan siap diambil.');
+        const j = D.jadwal(tanggal);
+        const ps = j.pesanan.filter((p) => ['baru', 'konfirmasi', 'produksi'].includes(p.status));
+        const baris = j.baris.filter((x) => S.get('produk', x.produkId)?.jenis !== 'titipan');
+        openSheet({
+          html: `<h2 id="sheet-t">Produksi selesai</h2>
+            <p class="small muted" style="margin-top:-6px">${ps.length} pesanan akan berubah jadi Siap. Kalau jadinya lebih dari pesanan, kelebihannya masuk stok ready.</p>
+            <form>${baris.map((x, i) => `<div class="item" style="padding:8px 0"><div class="grow"><label for="jd-${i}" class="t">${h(x.nama)}</label><div class="s">Dipesan ${angka(x.qty, 2)}</div></div>
+              <input type="hidden" name="v[]" value="${h(x.varianId)}"><input type="hidden" name="q[]" value="${h(x.qty)}">
+              <input type="number" inputmode="numeric" min="0" step="any" id="jd-${i}" name="jadi[]" value="${h(x.qty)}" aria-label="Jumlah jadi ${h(x.nama)}" style="width:96px;flex:none"></div>`).join('')}
+            <button class="btn pri block" style="margin-top:12px">${ic('check')}Simpan</button></form>`,
+          submit: (form) => {
+            const f = formData(form);
+            const ops = ps.map((p) => ['pesanan', { ...p, status: 'siap' }]);
+            let lebih = 0;
+            (f.v || []).forEach((vid, i) => {
+              const ext = num(f.jadi[i]) - num(f.q[i]);
+              const v = S.get('varian', vid);
+              if (!(ext > 0) || !v) return;
+              const pr = S.get('produk', v.produkId);
+              lebih += ext;
+              ops.push(['stok', { varianId: vid, produkId: pr.id, nama: `${pr.nama} · ${v.nama}`, tanggal, kedaluwarsa: D.tglKedaluwarsa(tanggal, pr), jumlah: ext, hpp: Math.round(D.hppVarian(v, pr) * 100) / 100, harga: num(v.harga), sumber: 'produksi' }]);
+            });
+            S.putMany(ops);
+            closeSheet();
+            konfeti();
+            toast(lebih ? `Pesanan siap. ${angka(lebih, 2)} kelebihan masuk stok ready.` : 'Produksi selesai. Pesanan siap diambil.', 3500);
+          },
+        });
       },
+      untukStok: (b, e, ctx) => ctx.go('stokForm', { tanggal }),
     },
   },
 };

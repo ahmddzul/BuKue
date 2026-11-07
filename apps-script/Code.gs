@@ -3,7 +3,7 @@
  * Terbitkan sebagai Web App: Execute as = Me, Who has access = Anyone.
  * Data tetap di Sheet ini. Akses dijaga akun + token sesi.
  */
-var VERSI_SERVER = '0.1.0';
+var VERSI_SERVER = '1.0.0';
 var ITERASI_HASH = 300;
 var BATAS_GAGAL = 5;
 var KUNCI_MENIT = 10;
@@ -22,7 +22,13 @@ var TABS = {
   pembayaran: 'Pembayaran',
   biaya: 'Biaya',
   produksi: 'Produksi',
-  template: 'Template'
+  template: 'Template',
+  stok: 'StokReady',
+  stokKeluar: 'StokKeluar',
+  penitip: 'Penitip',
+  setoran: 'Setoran',
+  openPO: 'OpenPO',
+  kuotaPO: 'KuotaPO'
 };
 
 // Urutan kolom awal supaya Sheet enak dibaca. Kolom baru ditambah otomatis.
@@ -40,8 +46,35 @@ var KOLOM = {
   pembayaran: ['pesananId', 'tanggal', 'nominal', 'metode', 'catatan'],
   biaya: ['pesananId', 'tanggal', 'jenis', 'nominal', 'catatan'],
   produksi: ['tanggal', 'produkId', 'varianId', 'jumlah', 'status'],
-  template: ['judul', 'teks']
+  template: ['judul', 'teks'],
+  stok: ['varianId', 'produkId', 'nama', 'tanggal', 'kedaluwarsa', 'jumlah', 'hpp', 'harga', 'sumber', 'penitipId', 'catatan'],
+  stokKeluar: ['stokId', 'tanggal', 'jumlah', 'alasan', 'nilai', 'setoranId', 'catatan'],
+  penitip: ['nama', 'sapaan', 'wa', 'rekening', 'catatan'],
+  setoran: ['penitipId', 'tanggal', 'dari', 'sampai', 'terjual', 'total', 'untung', 'rincian'],
+  openPO: ['judul', 'batas', 'tanggalProduksi', 'catatan'],
+  kuotaPO: ['openPOId', 'varianId', 'kuota']
 };
+var TAB_TERLARANG = ['pengaturan', 'akun', 'sesi'];
+
+// Koleksi baru dari versi aplikasi yang lebih baru dibuat otomatis jadi tab,
+// supaya fitur baru tidak mewajibkan pemasangan ulang Code.gs.
+function namaTab_(col, buat) {
+  if (TABS[col]) return TABS[col];
+  if (!/^[a-z][A-Za-z0-9]{1,30}$/.test(String(col)) || TAB_TERLARANG.indexOf(String(col).toLowerCase()) >= 0) return null;
+  var nama = col.charAt(0).toUpperCase() + col.slice(1);
+  var props = PropertiesService.getScriptProperties();
+  var daftar = JSON.parse(props.getProperty('tabTambahan') || '[]');
+  if (daftar.indexOf(col) < 0) {
+    if (!buat) return null;
+    daftar.push(col);
+    props.setProperty('tabTambahan', JSON.stringify(daftar));
+  }
+  if (buat && !ss_().getSheetByName(nama)) sheetDenganKolom_(nama, KOLOM_SISTEM);
+  return nama;
+}
+function semuaKoleksi_() {
+  return Object.keys(TABS).concat(JSON.parse(PropertiesService.getScriptProperties().getProperty('tabTambahan') || '[]'));
+}
 var KOLOM_SISTEM = ['id', 'updatedAt', 'deleted', '_ts', 'by'];
 
 // ---------------- Menu Sheet ----------------
@@ -317,12 +350,12 @@ function push_(ops, akun) {
     var now = Date.now();
     var grup = {};
     ops.forEach(function (op) {
-      if (!op || !TABS[op.col] || !op.row || !op.row.id) return;
+      if (!op || !op.row || !op.row.id || !namaTab_(op.col, true)) return;
       (grup[op.col] = grup[op.col] || []).push(op.row);
     });
     var diterima = 0;
     Object.keys(grup).forEach(function (col) {
-      var sh = sheet_(TABS[col]);
+      var sh = sheet_(namaTab_(col, true));
       var rows = grup[col];
       var keys = {};
       rows.forEach(function (r) { Object.keys(r).forEach(function (k) { if (k !== '_ts') keys[k] = 1; }); });
@@ -372,8 +405,10 @@ function pull_(since) {
   try {
     var now = Date.now();
     var out = {};
-    Object.keys(TABS).forEach(function (col) {
-      var rows = bacaObjek_(sheet_(TABS[col])).filter(function (r) { return Number(r._ts) > since; });
+    semuaKoleksi_().forEach(function (col) {
+      var sh = ss_().getSheetByName(namaTab_(col, false) || '');
+      if (!sh) return;
+      var rows = bacaObjek_(sh).filter(function (r) { return Number(r._ts) > since; });
       if (rows.length) out[col] = rows;
     });
     // Kurangi 1 ms supaya perubahan yang tertulis di milidetik yang sama tetap terambil di tarikan berikutnya.

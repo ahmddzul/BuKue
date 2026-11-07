@@ -7,6 +7,7 @@ import { itemPesanan } from './home.js';
 import { tawarkanUpdateHpp } from './products.js';
 import { qrisLokal, simpanQrisLokal } from '../qris.js';
 import { prefs, apiPublik, VERSI_APP } from '../shared.js';
+import { tampilkanSplash, SEMUA } from '../splash.js';
 
 const { num } = C;
 const IG = 'https://instagram.com/ahmddzul';
@@ -36,8 +37,9 @@ export const views = {
           ${menuItem('bahan', 'sack', 'Bahan baku', `${S.all('bahan').length} bahan dan harganya`)}
           ${menuItem('customers', 'users', 'Pelanggan', `${S.all('pelanggan').length} pelanggan`)}
           ${menuItem('kiriman', 'truck', 'Kiriman', kiriman ? `${kiriman} pesanan perlu diantar` : 'Pesanan yang diantar atau lewat kurir')}
-          ${segera('box', 'Stok ready', 'v0.2')}
-          ${segera('basket', 'Titipan & penitip', 'v0.3')}
+          ${menuItem('stok', 'box', 'Stok ready', (() => { const n = D.stokPerVarian().reduce((a, x) => a + x.sisa, 0); const kd = D.hampirKedaluwarsa(1).length; return n ? `${angka(n, 2)} item siap jual${kd ? ` · ${kd} hampir kedaluwarsa` : ''}` : 'Kue siap jual tanpa pesanan'; })())}
+          ${menuItem('penitips', 'basket', 'Titipan & penitip', (() => { const b = D.titipanBelumSetor(); return b.total ? `Belum disetor ${rp(b.total)}` : `${S.all('penitip').length} penitip`; })())}
+          ${menuItem('openPOs', 'calendar', 'Open PO', `${D.openPOAktif().length} sedang buka`)}
         </div>
         <div class="list">
           ${menuItem('settings', 'gear', 'Pengaturan', 'Toko, rekening & QRIS, tampilan, template, akun')}
@@ -275,7 +277,10 @@ export const views = {
 
         <div class="list">
           <button type="button" class="item" data-act="template"><div class="av">${ic('text')}</div><div class="grow"><div class="t">Template pesan</div><div class="s">Tagihan, pesanan siap, promosi</div></div>${ic('next')}</button>
-          ${segera('hand', 'Layar pembuka & kalimat penyemangat', 'v0.3')}
+        </div>
+        <div class="card"><h2>Kalimat penyemangat</h2>
+          <label class="switch"><span><b>Layar pembuka</b><div class="small muted">Sapaan dan satu dari ${SEMUA.length} kalimat penyemangat setiap aplikasi dibuka.</div></span><input type="checkbox" data-act="splash" ${pr.splash !== false ? 'checked' : ''}></label>
+          <button type="button" class="btn block" data-act="lihatSplash" style="margin-top:8px">${ic('hand')}Lihat contoh</button>
         </div>
 
         ${ctx.demo ? `<div class="card"><h2>Mode coba</h2><p class="small muted">Data contoh hanya ada di HP ini. Untuk mulai serius, keluar dari mode coba lalu buat akun.</p><button class="btn block" data-act="keluarCoba">${ic('logout')}Keluar dari mode coba</button></div>` : `
@@ -324,6 +329,8 @@ export const views = {
     },
     actions: {
       tema: (b, e, ctx) => { prefs.set({ theme: b.dataset.k }); ctx.rerender(); },
+      splash: (b) => { prefs.set({ splash: b.checked }); toast(b.checked ? 'Layar pembuka dinyalakan' : 'Layar pembuka dimatikan'); },
+      lihatSplash: () => tampilkanSplash((D.setelan().namaPemilik || '').trim()),
       hapusQris: async (b, e, ctx) => {
         if (!(await konfirmasi('Hapus QRIS?', 'Gambar QRIS dihapus dari semua HP.', { ya: 'Hapus', bahaya: true }))) return;
         simpanQrisLokal('', null);
@@ -350,15 +357,29 @@ export const views = {
         ['Lupa kata sandi?', 'Buka Google Sheet BuKue di komputer, lalu menu BuKue > Reset kata sandi akun.'],
         ['Di iPhone, teks tagihan tidak ikut terkirim bersama QRIS.', 'WhatsApp di iPhone kadang hanya menerima gambar. BuKue sudah menyalin teksnya lebih dulu, jadi tinggal tempel di kolom chat.'],
         ['Di mana data saya disimpan?', 'Di Google Sheet milik kamu sendiri. Kata sandi disimpan dalam bentuk acak (hash), bukan teks asli. Gambar QRIS ada di folder Google Drive kamu.'],
+        ['Bagaimana kelebihan produksi masuk ke stok ready?', 'Di menu Produksi, ketuk "Produksi selesai" lalu isi jumlah yang benar-benar jadi. Kalau lebih dari pesanan, kelebihannya otomatis masuk Stok ready.'],
+        ['Apakah kue yang dibuang mengurangi untung?', 'Ya. Sisa buatan sendiri yang dibuang dihitung rugi senilai modalnya. Titipan yang rusak atau dikembalikan tidak mengurangi untungmu.'],
+        ['Bagaimana menghitung setoran ke penitip?', 'Buka Titipan & penitip, pilih penitip. "Belum disetor" berisi semua titipan yang terjual sejak setoran terakhir dikali harga setor. Setelah transfer, ketuk "Tandai sudah disetor".'],
+        ['Kuota open PO berkurang dari mana?', 'Dari pesanan yang memilih open PO itu di form pesanan. BuKue memberi peringatan kalau jumlahnya melebihi sisa kuota, tapi tetap boleh disimpan.'],
         ['HPP dihitung dari mana?', 'HPP per satuan = (biaya bahan + gas/listrik + tenaga) dibagi hasil bersih setelah susut, ditambah kemasan per satuan.'],
       ];
       return `<div class="card"><h2>Tujuan</h2><p style="margin:0">BuKue membantu bisnis kue rumahan mencatat pesanan PO, menghitung HPP dari harga bahan, merencanakan produksi dan belanja, menagih lewat WhatsApp dengan QRIS, dan melihat untung per bulan dan per tahun.</p></div>
+        <div class="card"><h2>Deskripsi</h2><p style="margin:0">Aplikasi web yang bisa dipasang di layar utama HP. Data tersimpan di Google Sheet milikmu, bisa dipakai di beberapa HP dengan satu akun, dan tetap jalan saat offline.</p></div>
+        <div class="card"><h2>Fitur</h2><ul style="margin:0;padding-left:20px;line-height:1.7">
+          <li>Bahan baku dan riwayat harga, resep, HPP, saran harga, simulasi produksi</li>
+          <li>Pesanan PO dengan DP dan pelunasan, open PO dengan kuota</li>
+          <li>Jadwal produksi dan daftar belanja</li>
+          <li>Stok ready, jual cepat, peringatan kedaluwarsa, catat sisa dibuang</li>
+          <li>Titipan, laporan dan setoran ke penitip</li>
+          <li>Tagihan WhatsApp dengan rekening dan QRIS, template pesan</li>
+          <li>Beranda: untung per periode, pesanan masuk, tagihan berjalan, produk terlaris</li></ul></div>
         <div class="card"><h2>Cara pakai singkat</h2><ol style="margin:0;padding-left:20px;line-height:1.7">
           <li>Catat bahan baku dan harganya (Lainnya, Bahan baku).</li>
           <li>Buat resep dari bahan itu. HPP langsung terhitung (Produk, Resep & HPP).</li>
           <li>Tambah produk dan varian, hubungkan ke resepnya.</li>
           <li>Catat pesanan, isi DP kalau ada, lalu tagih lewat tombol Tagih.</li>
-          <li>Lihat jadwal dan daftar belanja di menu Produksi.</li>
+          <li>Lihat jadwal dan daftar belanja di menu Produksi. Kelebihan produksi masuk stok ready.</li>
+          <li>Jual kue dari stok lewat Pesanan, "Jual dari stok". Titipan dicatat di Lainnya, Titipan & penitip.</li>
           <li>Ubah status pesanan sampai Selesai supaya masuk hitungan untung.</li></ol></div>
         <div class="sec"><span>Tanya jawab</span></div>
         <div class="list">${qa.map(([q, a]) => `<details class="item" style="display:block"><summary style="font-weight:650;min-height:28px">${h(q)}</summary><p class="small" style="margin:8px 0 0">${h(a)}</p></details>`).join('')}</div>

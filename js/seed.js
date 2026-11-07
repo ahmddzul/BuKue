@@ -55,7 +55,7 @@ export function dataContoh() {
   ];
   const pelanggan = [
     { id: 'pl-1', nama: 'Rina Wulandari', sapaan: 'Kak', wa: '081234567801', alamat: 'Jl. Melati 12, Bekasi', catatan: 'Tidak suka terlalu manis' },
-    { id: 'pl-2', nama: 'Bu Hartini', sapaan: 'Bu', wa: '081234567802', alamat: 'Perum Griya Asri B4', catatan: '' },
+    { id: 'pl-2', nama: 'Hartini', sapaan: 'Bu', wa: '081234567802', alamat: 'Perum Griya Asri B4', catatan: '' },
     { id: 'pl-3', nama: 'Dimas', sapaan: 'Mas', wa: '081234567803', alamat: '', catatan: 'Alergi kacang' },
     { id: 'pl-4', nama: 'Sari', sapaan: 'Kak', wa: '081234567804', alamat: 'Kos Mawar kamar 3', catatan: '' },
   ];
@@ -86,7 +86,27 @@ export function dataContoh() {
   order('pl-4', -2, 0, 'produksi', [['vr-brownies-k', 1]], []);
   order('pl-2', -1, 1, 'konfirmasi', [['vr-nastar', 4], ['vr-kastengel', 2]], [[300000, -1]]);
   order('pl-3', 0, 2, 'baru', [['vr-kastengel', 1]], []);
+  // Titipan, stok ready, open PO
+  produk.push({ id: 'pr-risol', nama: 'Risol Mayo (titipan)', jenis: 'titipan', penitipId: 'pt-1', satuan: 'pcs', umurSimpan: 2 });
+  varian.push({ id: 'vr-risol', produkId: 'pr-risol', nama: 'Isi 1', harga: 5000, hargaSetor: 3500, urut: 1 });
+  const penitip = [{ id: 'pt-1', nama: 'Lia', sapaan: 'Mbak', wa: '081234567805', rekening: 'BRI 0987654321 a.n. Lia' }];
+  const stok = [
+    { id: 'sk-1', varianId: 'vr-brownies-o', produkId: 'pr-brownies', nama: 'Brownies Panggang · Original', tanggal: d(-3), kedaluwarsa: d(1), jumlah: 3, hpp: hppDemo['vr-brownies-o'], harga: 85000, sumber: 'produksi' },
+    { id: 'sk-2', varianId: 'vr-nastar', produkId: 'pr-nastar', nama: 'Nastar · Klasik 500 g', tanggal: d(-2), kedaluwarsa: d(28), jumlah: 5, hpp: hppDemo['vr-nastar'], harga: 95000, sumber: 'produksi' },
+    { id: 'sk-3', varianId: 'vr-risol', produkId: 'pr-risol', nama: 'Risol Mayo (titipan) · Isi 1', tanggal: d(-1), kedaluwarsa: d(1), jumlah: 20, hpp: 3500, harga: 5000, sumber: 'titipan', penitipId: 'pt-1' },
+  ];
+  const stokKeluar = [{ id: 'kl-1', stokId: 'sk-1', tanggal: d(-1), jumlah: 1, alasan: 'dibuang', nilai: Math.round(hppDemo['vr-brownies-o']) }];
+  const jual = 'ps-ready-1';
+  pesanan.push({ id: jual, kode: 'BK-DEMO-R1', jenis: 'ready', pelangganId: '', tglPesan: d(-1), tglAmbil: d(-1), jam: '', cara: 'ambil', diskon: 0, ongkir: 0, status: 'selesai', tglSelesai: d(-1), catatan: '' });
+  itemPesanan.push({ id: 'it-r1', pesananId: jual, produkId: 'pr-risol', varianId: 'vr-risol', stokId: 'sk-3', nama: 'Risol Mayo (titipan) · Isi 1', qty: 12, harga: 5000, hpp: 3500 });
+  itemPesanan.push({ id: 'it-r2', pesananId: jual, produkId: 'pr-nastar', varianId: 'vr-nastar', stokId: 'sk-2', nama: 'Nastar · Klasik 500 g', qty: 1, harga: 95000, hpp: hppDemo['vr-nastar'] });
+  pembayaran.push({ id: 'by-r1', pesananId: jual, nominal: 155000, tanggal: d(-1), metode: 'Tunai' });
+  const openPO = [{ id: 'po-1', judul: 'PO Akhir Pekan', batas: d(2), tanggalProduksi: d(4) }];
+  const kuotaPO = [{ id: 'kq-1', openPOId: 'po-1', varianId: 'vr-nastar', kuota: 10 }, { id: 'kq-2', openPOId: 'po-1', varianId: 'vr-kastengel', kuota: 8 }];
+  pesanan.forEach((p) => { if (p.tglPesan >= d(-1) && p.jenis !== 'ready') p.openPOId = 'po-1'; });
+
   return {
+    penitip, stok, stokKeluar, openPO, kuotaPO,
     setelan: [{ id: 'toko', namaToko: 'Dapur Contoh', namaPemilik: '', rekening: 'BCA 1234567890 a.n. Contoh', sapaanBawaan: 'Kak' }],
     bahan, resep, resepBahan, produk, varian, pelanggan, pesanan, itemPesanan, pembayaran, biaya,
   };

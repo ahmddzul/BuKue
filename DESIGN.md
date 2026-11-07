@@ -72,7 +72,12 @@ Ikon garis 2 px yang digambar sendiri, masing-masing benda nyata di dapur atau t
 | Daftar muncul berurutan | Mata mengikuti isi dari atas ke bawah. |
 | Angka untung menghitung naik | Menarik perhatian ke satu angka terpenting saat periode diganti. |
 | Lembar bawah naik | Menunjukkan lembar itu bisa ditutup ke bawah. |
-| Konfeti kecil saat Lunas atau produksi selesai | Merayakan momen yang ditunggu. Hanya 1,4 detik. |
+| Konfeti kecil saat Lunas, produksi selesai, penjualan stok, atau setoran | Merayakan momen yang ditunggu. Hanya 1,4 detik. |
+| Layar pembuka (muncul pelan, hilang setelah 2,4 detik atau diketuk) | Sapaan dan kalimat penyemangat sebelum mulai bekerja. Bisa dimatikan. |
+
+## Kalimat penyemangat
+
+120 kalimat di `js/kalimat.js`: 78 gaya sedang (65%), 30 santai/lucu (25%), 12 formal (10%). Semuanya tentang dunia kue dan usaha rumahan. Urutan diacak dan disimpan di HP, sehingga tidak ada kalimat yang muncul dua kali sebelum semuanya tampil.
 
 Semua mati dengan `prefers-reduced-motion: reduce`.
 

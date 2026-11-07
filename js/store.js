@@ -1,7 +1,7 @@
 // Data disimpan di HP dulu, lalu dikirim lewat antrean yang tahan offline.
 import { num } from './calc.js';
 
-export const COLS = ['setelan', 'bahan', 'riwayatHarga', 'resep', 'resepBahan', 'produk', 'varian', 'pelanggan', 'pesanan', 'itemPesanan', 'pembayaran', 'biaya', 'produksi', 'template'];
+export const COLS = ['setelan', 'bahan', 'riwayatHarga', 'resep', 'resepBahan', 'produk', 'varian', 'pelanggan', 'pesanan', 'itemPesanan', 'pembayaran', 'biaya', 'produksi', 'template', 'stok', 'stokKeluar', 'penitip', 'setoran', 'openPO', 'kuotaPO'];
 
 export class AuthError extends Error {}
 

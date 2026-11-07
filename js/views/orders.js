@@ -227,10 +227,25 @@ function barisItem(it, i) {
 
 function ringkasForm(form) {
   const f = formData(form);
+  let peringatan = '';
+  if (f.openPOId) {
+    const po = D.store().get('openPO', f.openPOId);
+    if (po) {
+      const info = D.infoOpenPO(po);
+      const lamaQty = {};
+      if (draft?._for && draft._for !== 'baru') D.store().where('itemPesanan', 'pesananId', draft._for).forEach((it) => (lamaQty[it.varianId] = (lamaQty[it.varianId] || 0) + num(it.qty)));
+      const minta = {};
+      (f.varian || []).forEach((v, i) => (minta[v] = (minta[v] || 0) + num(f.qty[i])));
+      const lebih = info.baris.filter((b) => minta[b.varianId] && minta[b.varianId] > b.sisa + (draft?._for && D.store().get('pesanan', draft._for)?.openPOId === f.openPOId ? lamaQty[b.varianId] || 0 : 0));
+      const luar = Object.keys(minta).filter((v) => v && !info.baris.some((b) => b.varianId === v));
+      if (lebih.length) peringatan += `<div class="banner" style="margin:8px 0 0">${ic('alert')}<span class="grow">Melebihi kuota: ${lebih.map((b) => `${h(b.nama)} (sisa ${angka(b.sisa)})`).join(', ')}</span></div>`;
+      if (luar.length) peringatan += `<div class="banner" style="margin:8px 0 0">${ic('alert')}<span class="grow">Ada produk yang tidak ada di kuota open PO ini.</span></div>`;
+    }
+  }
   const qty = f.qty || [], harga = f.harga || [];
   const sub = qty.reduce((s, q, i) => s + num(q) * num(harga[i]), 0);
   const total = Math.max(sub - num(f.diskon) + num(f.ongkir), 0);
-  return `${kv('Subtotal', rp(sub))}${num(f.diskon) ? kv('Diskon', '-' + rp(f.diskon)) : ''}${num(f.ongkir) ? kv('Ongkir', rp(f.ongkir)) : ''}${kv('Total', rp(total), 'total')}${num(f.dp) ? kv('DP diterima', rp(f.dp)) + kv('Sisa', rp(Math.max(total - num(f.dp), 0))) : ''}`;
+  return peringatan + `${kv('Subtotal', rp(sub))}${num(f.diskon) ? kv('Diskon', '-' + rp(f.diskon)) : ''}${num(f.ongkir) ? kv('Ongkir', rp(f.ongkir)) : ''}${kv('Total', rp(total), 'total')}${num(f.dp) ? kv('DP diterima', rp(f.dp)) + kv('Sisa', rp(Math.max(total - num(f.dp), 0))) : ''}`;
 }
 
 function bacaDraft(form) {
@@ -261,7 +276,9 @@ export const views = {
         list = list.filter(({ p, i }) => [D.namaPel(i.pel), p.kode, p.catatan, ...i.items.map((x) => x.nama)].join(' ').toLowerCase().includes(q));
       }
       if (f === 'aktif' || f === 'belum' || f === 'hariini') list.sort((a, b) => String(a.p.tglAmbil).localeCompare(String(b.p.tglAmbil)));
-      let out = chips('filter', FILTER, f, { bawaan: 'aktif', label: 'Saring pesanan', wrap: false });
+      const nPO = D.openPOAktif().length, nStok = D.stokPerVarian().length;
+      let out = `<div class="btns" style="margin-bottom:10px"><button class="btn sm" data-go="openPOs">${ic('calendar')}Open PO${nPO ? ` <span class="tag acc">${nPO} buka</span>` : ''}</button><button class="btn sm" data-go="jualStok" ${nStok ? '' : 'disabled'}>${ic('box')}Jual dari stok</button></div>`;
+      out += chips('filter', FILTER, f, { bawaan: 'aktif', label: 'Saring pesanan', wrap: false });
       out += `<div class="field" style="margin-top:6px"><label for="cari-pesanan" class="sr">Cari pesanan</label><input type="search" id="cari-pesanan" placeholder="Cari nama, kode, atau produk" value="${h(cari)}"></div>`;
       if (!S.all('pesanan').length) return out + kosong('receipt', 'Belum ada pesanan', 'Pesanan yang kamu catat akan muncul di sini.', `<button class="btn pri" data-go="orderForm">${ic('plus')}Catat pesanan</button>`);
       if (!list.length) return out + kosong('search', 'Tidak ada yang cocok', 'Coba saringan lain atau kata kunci lain.');
@@ -293,7 +310,7 @@ export const views = {
       let out = `<div class="card">
         <div class="row"><div class="av">${h(inisial(D.namaPel(i.pel)))}</div>
           <div class="grow">${i.pel ? `<button class="link" style="padding:0;min-height:0;font-size:16px" data-go="customer" data-id="${h(i.pel.id)}">${h(i.pel.nama)}</button>` : '<b>Tanpa nama</b>'}
-          <div class="small muted">${tagBayar(i.sb)} ${tagStatus(p.status)}</div></div>
+          <div class="small muted">${tagBayar(i.sb)} ${tagStatus(p.status)}${p.jenis === 'ready' ? ' <span class="tag acc">Stok ready</span>' : ''}${p.openPOId && S.get('openPO', p.openPOId) ? ` <span class="tag acc">${h(S.get('openPO', p.openPOId).judul || 'Open PO')}</span>` : ''}</div></div>
           ${i.pel?.wa ? `<a class="iconbtn" href="https://wa.me/${nomorWa(i.pel.wa)}" target="_blank" rel="noopener" aria-label="Chat WhatsApp">${ic('chat')}</a>` : ''}
         </div>
         <div class="steps" aria-hidden="true">${D.STATUS.slice(0, 6).map((s, k) => `<i class="${p.status !== 'batal' && k <= idx ? 'on' : ''}"></i>`).join('')}</div>
@@ -363,13 +380,13 @@ export const views = {
     form: true,
     enter() { draft = null; },
     title: (p) => (p.id ? 'Ubah pesanan' : 'Pesanan baru'),
-    render({ id, pelanggan }, ctx) {
+    render({ id, pelanggan, openpo }, ctx) {
       const S = ctx.S;
       if (!draft || draft._for !== (id || 'baru')) {
         const lama = id ? S.get('pesanan', id) : null;
         draft = lama
           ? { _for: id, ...lama, items: S.where('itemPesanan', 'pesananId', id).map((x) => ({ ...x })) }
-          : { _for: 'baru', pelangganId: pelanggan || '', tglAmbil: addDays(D.today(), 1), jam: '', cara: 'ambil', items: [{ qty: 1 }], diskon: '', ongkir: '', dp: '', metode: 'QRIS' };
+          : { _for: 'baru', pelangganId: pelanggan || '', openPOId: openpo || '', tglAmbil: openpo ? S.get('openPO', openpo)?.tanggalProduksi || addDays(D.today(), 1) : addDays(D.today(), 1), jam: '', cara: 'ambil', items: [{ qty: 1 }], diskon: '', ongkir: '', dp: '', metode: 'QRIS' };
       }
       const d = draft;
       if (!S.all('varian').length) {
@@ -386,6 +403,10 @@ export const views = {
             ${field('Nomor WhatsApp', `<input type="tel" id="pb-wa" name="pbWa" value="${h(d.pbWa || '')}" inputmode="tel" placeholder="08…">`, { id: 'pb-wa' })}
           </div>
         </div>
+        ${(() => {
+          const pos = S.all('openPO').filter((po) => po.id === d.openPOId || !po.batas || po.batas >= D.today());
+          return pos.length ? `<div class="card">${field('Open PO', `<select id="po-sel" name="openPOId"><option value="">Bukan dari open PO</option>${pos.map((po) => `<option value="${h(po.id)}" ${po.id === d.openPOId ? 'selected' : ''}>${h(po.judul || 'Open PO')} · order s.d. ${h(tgl(po.batas))}</option>`).join('')}</select>`, { id: 'po-sel', hint: 'Pesanan dari open PO mengurangi kuotanya.' })}</div>` : '';
+        })()}
         <div class="sec"><span>Isi pesanan</span></div>
         <div id="baris-item">${d.items.map(barisItem).join('')}</div>
         <button type="button" class="btn block" data-act="tambahItem" style="margin-bottom:12px">${ic('plus')}Tambah produk</button>
@@ -424,6 +445,7 @@ export const views = {
         if (pel?.alamat && !form.alamat.value) form.alamat.value = pel.alamat;
       }
       if (el.name === 'cara') form.querySelector('[data-antar]').hidden = !el.value || el.value === 'ambil';
+      if (el.name === 'openPOId' && el.value) { const po = ctx.S.get('openPO', el.value); if (po?.tanggalProduksi) form.tglAmbil.value = po.tanggalProduksi; }
       bacaDraft(form);
       form.querySelector('#ringkas').innerHTML = ringkasForm(form);
     },
@@ -451,7 +473,7 @@ export const views = {
       ops.push(['pesanan', {
         ...(lama || {}), id, kode: lama?.kode || D.kodeBaru(), pelangganId: pelangganId || '', tglPesan: lama?.tglPesan || D.today(),
         tglAmbil: d.tglAmbil, jam: d.jam || '', cara: d.cara || 'ambil', alamat: d.cara !== 'ambil' ? d.alamat || '' : '',
-        catatan: d.catatan || '', diskon: num(d.diskon), ongkir: d.cara !== 'ambil' ? num(d.ongkir) : 0, status: lama?.status || 'baru', tglSelesai: lama?.tglSelesai || '',
+        catatan: d.catatan || '', diskon: num(d.diskon), ongkir: d.cara !== 'ambil' ? num(d.ongkir) : 0, status: lama?.status || 'baru', tglSelesai: lama?.tglSelesai || '', openPOId: d.openPOId || '', jenis: lama?.jenis || 'po',
       }]);
       const lamaItems = lama ? S.where('itemPesanan', 'pesananId', id) : [];
       const dipakai = new Set();

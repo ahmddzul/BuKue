@@ -10,9 +10,12 @@ import { views as V_PROD } from './views/products.js';
 import { views as V_MORE } from './views/more.js';
 import { views as V_PRODUKSI } from './views/production.js';
 import { authView } from './views/auth.js';
+import { views as V_STOK } from './views/stok.js';
+import { views as V_PO } from './views/openpo.js';
+import { tampilkanSplash } from './splash.js';
 
 const LS = localStorage;
-const views = { ...V_HOME, ...V_ORDERS, ...V_PROD, ...V_MORE, ...V_PRODUKSI };
+const views = { ...V_HOME, ...V_ORDERS, ...V_PROD, ...V_MORE, ...V_PRODUKSI, ...V_STOK, ...V_PO };
 const TABS = [
   ['home', 'Beranda', 'home'],
   ['orders', 'Pesanan', 'receipt'],
@@ -278,3 +281,4 @@ history.replaceState({ d: 0 }, '');
 const awal = sesi.get();
 if (awal && (awal.mode === 'coba' || (awal.mode === 'akun' && awal.token))) bukaStore(awal);
 render(true);
+if (prefs.get().splash !== false) tampilkanSplash(S ? (D.setelan().namaPemilik || '').trim() : '');

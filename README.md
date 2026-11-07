@@ -2,13 +2,13 @@
 
 Aplikasi pencatatan bisnis kue rumahan di HP: pesanan PO, HPP dari harga bahan, jadwal produksi dan daftar belanja, serta tagihan WhatsApp dengan QRIS. Data tersimpan di Google Sheet milik kamu sendiri, dan bisa dipakai di beberapa HP sekaligus dengan satu akun.
 
-Versi sekarang: **0.1.0**
+Versi sekarang: **1.0.0**
 
 ---
 
 ## Fitur
 
-**Sudah ada di v0.1**
+**Fitur lengkap**
 
 - **Bahan baku**: harga beli, isi kemasan, konversi kg/g, L/ml, butir, sdm, sdt. Harga per gram/ml dihitung otomatis. Riwayat harga tersimpan, dan saat harga berubah BuKue memberi tahu resep mana yang ikut berubah.
 - **Resep & HPP**: HPP per pcs/loyang/toples dari bahan, gas/listrik (persen atau Rp per adonan), tenaga, susut, dan kemasan. Ada saran harga jual (target margin atau untung Rp, dibulatkan ke Rp 500 atau Rp 1.000) dan simulasi "mau buat 50 pcs".
@@ -25,12 +25,13 @@ Versi sekarang: **0.1.0**
 - **Akun**: buat akun sekali, HP lain tinggal masuk. Pemilik bisa menambah akun anggota (misalnya asisten). Bisa melihat HP yang sedang masuk dan mengeluarkan HP lain.
 - **Offline**: semua perubahan disimpan di HP dulu dan dikirim otomatis saat ada sinyal.
 - **Tampilan**: 6 tema pastel (Baby Pink bawaan), mode terang, gelap, atau ikuti HP.
+- **Stok ready**: stok per produk per tanggal produksi, jual cepat dari stok (mengambil stok yang paling cepat kedaluwarsa dulu), peringatan stok hampir kedaluwarsa, catat sisa yang dibuang sebagai rugi. Kelebihan produksi otomatis masuk stok ready.
+- **Open PO**: batas tanggal order, tanggal produksi, kuota per produk, peringatan kalau pesanan melebihi kuota, dan teks promosi otomatis untuk status WhatsApp.
+- **Titipan (konsinyasi)**: data penitip, terima titipan dengan harga setor dan harga jual, penjualan titipan mengurangi stok titipan, laporan setoran per penitip (terjual × harga setor, sisa yang dikembalikan, untungmu), tandai sudah disetor, dan teks laporan WhatsApp.
+- **Layar pembuka**: logo, sapaan sesuai waktu, dan satu dari 120 kalimat penyemangat khas bisnis kue, diacak tanpa pengulangan. Hilang sendiri sekitar 2,4 detik atau saat diketuk, dan bisa dimatikan di Pengaturan.
 - **Mode coba** dengan data contoh, tanpa perlu menyambungkan Google Sheet.
 
-**Rencana berikutnya**
-
-- v0.2: stok ready (penjualan dari stok, peringatan kedaluwarsa, sisa dibuang), open PO dengan kuota dan teks promosi.
-- v0.3: titipan dan setoran ke penitip, layar pembuka dengan 120 kalimat penyemangat, Google Sheet template siap salin.
+Google Sheet template "Buat salinan" belum tersedia, jadi `Code.gs` masih ditempel manual (langkah 3).
 
 ---
 
@@ -132,6 +133,8 @@ Kalau HP hilang: **Pengaturan** > **HP yang masuk** > **Keluarkan semua HP lain*
 
 ## Cara memperbarui
 
+> **Dari v0.1.x ke v1.0.0, `Code.gs` wajib diperbarui** (langkah 2 di bawah). Tanpa itu, stok ready, titipan, dan open PO hanya tersimpan di HP dan tidak masuk Google Sheet. Mulai v1.0.0, fitur baru yang butuh tab baru akan membuat tabnya sendiri, jadi ke depannya `Code.gs` jarang perlu diganti.
+
 1. Unduh zip versi baru, ekstrak, lalu unggah semua isinya ke repository GitHub yang sama (**Add file** > **Upload files**). File lama otomatis ditimpa. **Jangan menimpa `js/config.js`** kalau kamu sudah mengisi link Web App di sana (atau isi ulang setelah mengunggah).
 2. Kalau catatan rilis menyebut `Code.gs` berubah:
    1. Tempel ulang isi `Code.gs` di Apps Script, simpan.
@@ -155,7 +158,9 @@ Kalau HP hilang: **Pengaturan** > **HP yang masuk** > **Keluarkan semua HP lain*
 | Di iPhone, teks tagihan tidak ikut terkirim bersama QRIS | BuKue sudah menyalin teksnya. Tempel di kolom chat WhatsApp. |
 | QRIS tidak muncul di HP kedua | Pastikan HP pertama mengunggah QRIS saat online. Kalau tidak, unggah ulang. |
 | Tampilan tidak berubah setelah update | Tutup BuKue, buka lagi, lalu ketuk **Muat ulang** di kartu versi baru. |
-| Angka untung Rp 0 | Untung hanya dari pesanan berstatus **Selesai**. |
+| Angka untung Rp 0 | Untung hanya dari pesanan berstatus **Selesai**. Penjualan dari stok ready langsung tercatat Selesai. |
+| Stok ready, titipan, atau open PO tidak muncul di HP lain | `Code.gs` belum diperbarui ke 1.0.0. Lihat **Cara memperbarui**. |
+| Layar pembuka tidak mau muncul | Cek **Pengaturan** > **Kalimat penyemangat** > **Layar pembuka**. Pengaturan ini per HP. |
 
 ---
 

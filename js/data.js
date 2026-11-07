@@ -92,6 +92,9 @@ export function laporan(per) {
       o.untung += num(it.qty) * (num(it.harga) - num(it.hpp));
     });
   });
+  const dibuang = S.all('stokKeluar').filter((k) => k.alasan === 'dibuang' && num(k.nilai) > 0 && C.dalam(k.tanggal, r));
+  const rugi = dibuang.reduce((s, k) => s + num(k.nilai), 0);
+  untung -= rugi;
   const masuk = semua.filter((p) => C.dalam(p.tglPesan, r));
   const m = { nilai: 0, pcs: 0, pel: new Set(), estUntung: 0, lunas: 0, dp: 0, belum: 0, nLunas: 0, nDp: 0, nBelum: 0 };
   masuk.forEach((p) => {
@@ -110,15 +113,17 @@ export function laporan(per) {
     const y = r.dari.slice(0, 4);
     grafik = Array.from({ length: 12 }, (_, k) => ({ k: `${y}-${String(k + 1).padStart(2, '0')}`, v: 0 }));
     selesai.forEach((p) => { const g = grafik.find((x) => tglUntung(p).startsWith(x.k)); if (g) g.v += pesananInfo(p).untung; });
+    dibuang.forEach((k) => { const g = grafik.find((x) => k.tanggal.startsWith(x.k)); if (g) g.v -= num(k.nilai); });
   } else if (per.jenis === '7' || per.jenis === '30' || per.jenis === 'bulan') {
     const hari = [];
     for (let d = r.dari; d <= r.sampai && hari.length < 31; d = C.addDays(d, 1)) hari.push({ k: d, v: 0 });
     selesai.forEach((p) => { const g = hari.find((x) => x.k === tglUntung(p)); if (g) g.v += pesananInfo(p).untung; });
+    dibuang.forEach((k) => { const g = hari.find((x) => x.k === k.tanggal); if (g) g.v -= num(k.nilai); });
     grafik = hari;
   }
   const produk = Object.values(perProduk);
   return {
-    r, untung, omzetSelesai, pcsSelesai, nSelesai: selesai.length,
+    r, untung, rugi, omzetSelesai, pcsSelesai, nSelesai: selesai.length,
     masuk: { ...m, pel: m.pel.size, n: masuk.length },
     grafik,
     laku: [...produk].sort((a, b) => b.qty - a.qty).slice(0, 5),
@@ -200,3 +205,84 @@ export function itemBedaHpp() {
 export function jumlahLunas() {
   return S.all('pesanan').filter((p) => p.status !== 'batal' && pesananInfo(p).sb === 'lunas').length;
 }
+
+// ---------- Stok ready ----------
+// Sisa dihitung dari catatan (bukan disimpan), supaya dua HP tidak saling menimpa angka stok.
+export function indexStok() {
+  const terjual = {}, keluar = {};
+  const ps = {};
+  S.all('pesanan').forEach((p) => (ps[p.id] = p));
+  S.all('itemPesanan').forEach((it) => {
+    if (!it.stokId) return;
+    const p = ps[it.pesananId];
+    if (!p || p.status === 'batal') return;
+    terjual[it.stokId] = (terjual[it.stokId] || 0) + num(it.qty);
+  });
+  S.all('stokKeluar').forEach((k) => (keluar[k.stokId] = (keluar[k.stokId] || 0) + num(k.jumlah)));
+  return { terjual, keluar };
+}
+export function batchInfo(b, idx = indexStok()) {
+  const terjual = idx.terjual[b.id] || 0, keluar = idx.keluar[b.id] || 0;
+  return { ...b, terjual, keluar, sisa: Math.max(num(b.jumlah) - terjual - keluar, 0) };
+}
+export function stokAktif() {
+  const idx = indexStok();
+  return S.all('stok').map((b) => batchInfo(b, idx)).filter((b) => b.sisa > 0)
+    .sort((a, b) => String(a.kedaluwarsa || '9999').localeCompare(String(b.kedaluwarsa || '9999')) || String(a.tanggal).localeCompare(String(b.tanggal)));
+}
+export function stokPerVarian() {
+  const m = {};
+  stokAktif().forEach((b) => {
+    const a = (m[b.varianId] = m[b.varianId] || { varianId: b.varianId, produkId: b.produkId, nama: b.nama, sisa: 0, batch: [], harga: num(b.harga) });
+    a.sisa += b.sisa;
+    a.batch.push(b);
+  });
+  return Object.values(m).sort((a, b) => a.nama.localeCompare(b.nama));
+}
+export function sisaHari(b) {
+  if (!b.kedaluwarsa) return null;
+  return Math.round((new Date(b.kedaluwarsa + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 86400000);
+}
+export const hampirKedaluwarsa = (hari = 1) => stokAktif().filter((b) => b.kedaluwarsa && sisaHari(b) <= hari);
+export function tglKedaluwarsa(tanggal, produk) {
+  const u = num(produk?.umurSimpan);
+  return u > 0 ? C.addDays(tanggal, u) : '';
+}
+
+// ---------- Titipan ----------
+export function titipanBelumSetor(penitipId) {
+  const stok = {};
+  S.all('stok').forEach((b) => { if (b.penitipId && (!penitipId || b.penitipId === penitipId)) stok[b.id] = b; });
+  const ps = {};
+  S.all('pesanan').forEach((p) => (ps[p.id] = p));
+  const items = S.all('itemPesanan').filter((it) => it.stokId && stok[it.stokId] && !it.setoranId && ps[it.pesananId] && ps[it.pesananId].status !== 'batal')
+    .map((it) => ({ it, b: stok[it.stokId], p: ps[it.pesananId] }));
+  const kembali = S.all('stokKeluar').filter((k) => k.alasan === 'dikembalikan' && stok[k.stokId] && !k.setoranId).map((k) => ({ k, b: stok[k.stokId] }));
+  const perProduk = {};
+  let total = 0, untung = 0, qty = 0;
+  items.forEach(({ it }) => {
+    const o = (perProduk[it.nama] = perProduk[it.nama] || { nama: it.nama, qty: 0, setor: 0, hargaSetor: num(it.hpp) });
+    o.qty += num(it.qty);
+    o.setor += num(it.qty) * num(it.hpp);
+    total += num(it.qty) * num(it.hpp);
+    untung += num(it.qty) * (num(it.harga) - num(it.hpp));
+    qty += num(it.qty);
+  });
+  const tanggal = items.map((x) => x.p.tglPesan).sort();
+  return { items, kembali, perProduk: Object.values(perProduk), total, untung, qty, dari: tanggal[0] || '', sampai: tanggal[tanggal.length - 1] || '' };
+}
+
+// ---------- Open PO ----------
+export function infoOpenPO(po) {
+  const kuota = S.where('kuotaPO', 'openPOId', po.id);
+  const ps = S.all('pesanan').filter((p) => p.openPOId === po.id && p.status !== 'batal');
+  const pakai = {};
+  ps.forEach((p) => S.where('itemPesanan', 'pesananId', p.id).forEach((it) => (pakai[it.varianId] = (pakai[it.varianId] || 0) + num(it.qty))));
+  const baris = kuota.map((k) => {
+    const v = S.get('varian', k.varianId);
+    const pr = v ? S.get('produk', v.produkId) : null;
+    return { ...k, nama: pr && v ? `${pr.nama} · ${v.nama}` : '(produk dihapus)', harga: num(v?.harga), kuota: num(k.kuota), terpakai: pakai[k.varianId] || 0, sisa: Math.max(num(k.kuota) - (pakai[k.varianId] || 0), 0) };
+  });
+  return { baris, pesanan: ps, aktif: !po.batas || po.batas >= today() };
+}
+export const openPOAktif = () => S.all('openPO').filter((po) => !po.batas || po.batas >= today()).sort((a, b) => String(a.batas).localeCompare(String(b.batas)));
