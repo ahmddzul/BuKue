@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="id" data-theme="pink">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BuKue</title>
+  <meta name="description" content="Pencatatan bisnis kue rumahan: PO, HPP, produksi, dan tagihan WhatsApp dengan QRIS.">
+  <meta name="theme-color" content="#FBF8F9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="BuKue">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/PlusJakartaSans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css?v=0.1.0">
+  <script>
+    try { var p = JSON.parse(localStorage.getItem('bukue:prefs') || '{}'); document.documentElement.dataset.theme = p.theme || 'pink'; if (p.mode && p.mode !== 'auto') document.documentElement.dataset.mode = p.mode; } catch (e) {}
+  </script>
+</head>
+<body>
+  <div id="app" aria-live="off">
+    <main id="view"><div class="wrap"><div class="empty"><p>Memuat BuKue…</p></div></div></main>
+  </div>
+  <noscript>BuKue butuh JavaScript yang aktif.</noscript>
+  <script type="module" src="js/app.js?v=0.1.0"></script>
+</body>
+</html>
