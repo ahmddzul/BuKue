@@ -31,6 +31,7 @@ export function dataContoh() {
     { id: 'rs-nastar', nama: 'Nastar klasik', hasil: 4, satuanHasil: 'toples', kemasan: 6500, gasMode: 'persen', gasNilai: 5, tenaga: 0, susut: 3 },
     { id: 'rs-brownies', nama: 'Brownies panggang 20x20', hasil: 1, satuanHasil: 'loyang', kemasan: 4000, gasMode: 'rp', gasNilai: 3000, tenaga: 0, susut: 0 },
     { id: 'rs-kastengel', nama: 'Kastengel', hasil: 3, satuanHasil: 'toples', kemasan: 6500, gasMode: 'persen', gasNilai: 5, tenaga: 0, susut: 3 },
+    { id: 'rs-soes', nama: 'Kue soes vla', hasil: 40, satuanHasil: 'pcs', kemasan: 0, gasMode: 'persen', gasNilai: 5, tenaga: 0, susut: 0 },
   ];
   let u = 0;
   const rb = (resepId, bahanId, jumlah, satuan) => ({ id: 'rb-' + ++u, resepId, bahanId, jumlah, satuan, urut: u });
@@ -41,17 +42,23 @@ export function dataContoh() {
     rb('rs-brownies', 'bh-telur', 3, 'butir'), rb('rs-brownies', 'bh-tepung', 100, 'g'), rb('rs-brownies', 'bh-coklatbubuk', 2, 'sdm'),
     rb('rs-kastengel', 'bh-tepung', 400, 'g'), rb('rs-kastengel', 'bh-mentega', 200, 'g'), rb('rs-kastengel', 'bh-keju', 200, 'g'),
     rb('rs-kastengel', 'bh-telur', 2, 'butir'), rb('rs-kastengel', 'bh-susu', 2, 'sdm'),
+    rb('rs-soes', 'bh-tepung', 150, 'g'), rb('rs-soes', 'bh-mentega', 125, 'g'), rb('rs-soes', 'bh-telur', 5, 'butir'),
+    rb('rs-soes', 'bh-susu', 6, 'sdm'), rb('rs-soes', 'bh-gula', 6, 'sdm'),
   ];
   const produk = [
     { id: 'pr-nastar', nama: 'Nastar', jenis: 'sendiri', satuan: 'toples', umurSimpan: 30 },
     { id: 'pr-brownies', nama: 'Brownies Panggang', jenis: 'sendiri', satuan: 'loyang', umurSimpan: 4 },
     { id: 'pr-kastengel', nama: 'Kastengel', jenis: 'sendiri', satuan: 'toples', umurSimpan: 30 },
+    { id: 'pr-soes', nama: 'Kue Soes', jenis: 'sendiri', satuan: 'mika', umurSimpan: 2 },
   ];
   const varian = [
     { id: 'vr-nastar', produkId: 'pr-nastar', nama: 'Klasik 500 g', harga: 95000, resepId: 'rs-nastar', urut: 1 },
     { id: 'vr-brownies-o', produkId: 'pr-brownies', nama: 'Original', harga: 85000, resepId: 'rs-brownies', urut: 1 },
     { id: 'vr-brownies-k', produkId: 'pr-brownies', nama: 'Topping keju', harga: 95000, resepId: 'rs-brownies', hppManual: '', urut: 2 },
     { id: 'vr-kastengel', produkId: 'pr-kastengel', nama: '500 g', harga: 105000, resepId: 'rs-kastengel', urut: 1 },
+    { id: 'vr-soes-8', produkId: 'pr-soes', nama: 'Mika isi 8', harga: 28000, resepId: 'rs-soes', isi: 8, kemasanVarian: 1500, urut: 1 },
+    { id: 'vr-soes-4', produkId: 'pr-soes', nama: 'Mika isi 4', harga: 15000, resepId: 'rs-soes', isi: 4, kemasanVarian: 1000, urut: 2 },
+    { id: 'vr-soes-1', produkId: 'pr-soes', nama: 'Satuan', harga: 3500, resepId: 'rs-soes', isi: 1, kemasanVarian: 300, urut: 3 },
   ];
   const pelanggan = [
     { id: 'pl-1', nama: 'Rina Wulandari', sapaan: 'Kak', wa: '081234567801', alamat: 'Jl. Melati 12, Bekasi', catatan: 'Tidak suka terlalu manis' },
@@ -63,10 +70,11 @@ export function dataContoh() {
   let no = 0, ib = 0;
   const bm = Object.fromEntries(bahan.map((b) => [b.id, b]));
   const hppResep = (id) => hitungResep(resep.find((r) => r.id === id), resepBahan.filter((x) => x.resepId === id), bm).hppPcs;
-  const hppDemo = { 'vr-nastar': hppResep('rs-nastar'), 'vr-brownies-o': hppResep('rs-brownies'), 'vr-brownies-k': hppResep('rs-brownies'), 'vr-kastengel': hppResep('rs-kastengel') };
-  const nama = { 'vr-nastar': 'Nastar · Klasik 500 g', 'vr-brownies-o': 'Brownies Panggang · Original', 'vr-brownies-k': 'Brownies Panggang · Topping keju', 'vr-kastengel': 'Kastengel · 500 g' };
-  const harga = { 'vr-nastar': 95000, 'vr-brownies-o': 85000, 'vr-brownies-k': 95000, 'vr-kastengel': 105000 };
-  const prod = { 'vr-nastar': 'pr-nastar', 'vr-brownies-o': 'pr-brownies', 'vr-brownies-k': 'pr-brownies', 'vr-kastengel': 'pr-kastengel' };
+  const isiSoes = hitungResep(resep.find((r) => r.id === 'rs-soes'), resepBahan.filter((x) => x.resepId === 'rs-soes'), bm).hppIsi;
+  const hppDemo = { 'vr-soes-8': 8 * isiSoes + 1500, 'vr-soes-4': 4 * isiSoes + 1000, 'vr-soes-1': isiSoes + 300, 'vr-nastar': hppResep('rs-nastar'), 'vr-brownies-o': hppResep('rs-brownies'), 'vr-brownies-k': hppResep('rs-brownies'), 'vr-kastengel': hppResep('rs-kastengel') };
+  const nama = { 'vr-soes-8': 'Kue Soes · Mika isi 8', 'vr-soes-4': 'Kue Soes · Mika isi 4', 'vr-soes-1': 'Kue Soes · Satuan', 'vr-nastar': 'Nastar · Klasik 500 g', 'vr-brownies-o': 'Brownies Panggang · Original', 'vr-brownies-k': 'Brownies Panggang · Topping keju', 'vr-kastengel': 'Kastengel · 500 g' };
+  const harga = { 'vr-soes-8': 28000, 'vr-soes-4': 15000, 'vr-soes-1': 3500, 'vr-nastar': 95000, 'vr-brownies-o': 85000, 'vr-brownies-k': 95000, 'vr-kastengel': 105000 };
+  const prod = { 'vr-soes-8': 'pr-soes', 'vr-soes-4': 'pr-soes', 'vr-soes-1': 'pr-soes', 'vr-nastar': 'pr-nastar', 'vr-brownies-o': 'pr-brownies', 'vr-brownies-k': 'pr-brownies', 'vr-kastengel': 'pr-kastengel' };
   function order(pel, pesan, ambil, status, isi, bayar = [], extra = {}) {
     const id = 'ps-' + ++no;
     pesanan.push({ id, kode: 'BK-DEMO-' + String(no).padStart(2, '0'), pelangganId: pel, tglPesan: d(pesan), tglAmbil: d(ambil), jam: '16:00', cara: 'ambil', diskon: 0, ongkir: 0, status, tglSelesai: status === 'selesai' ? d(ambil) : '', catatan: '', ...extra });
@@ -86,6 +94,7 @@ export function dataContoh() {
   order('pl-4', -2, 0, 'produksi', [['vr-brownies-k', 1]], []);
   order('pl-2', -1, 1, 'konfirmasi', [['vr-nastar', 4], ['vr-kastengel', 2]], [[300000, -1]]);
   order('pl-3', 0, 2, 'baru', [['vr-kastengel', 1]], []);
+  order('pl-4', 0, 1, 'konfirmasi', [['vr-soes-8', 3], ['vr-soes-4', 2], ['vr-soes-1', 5]], [[50000, 0]], { catatan: 'Arisan RT' });
   // Titipan, stok ready, open PO
   produk.push({ id: 'pr-risol', nama: 'Risol Mayo (titipan)', jenis: 'titipan', penitipId: 'pt-1', satuan: 'pcs', umurSimpan: 2 });
   varian.push({ id: 'vr-risol', produkId: 'pr-risol', nama: 'Isi 1', harga: 5000, hargaSetor: 3500, urut: 1 });
@@ -93,6 +102,7 @@ export function dataContoh() {
   const stok = [
     { id: 'sk-1', varianId: 'vr-brownies-o', produkId: 'pr-brownies', nama: 'Brownies Panggang · Original', tanggal: d(-3), kedaluwarsa: d(1), jumlah: 3, hpp: hppDemo['vr-brownies-o'], harga: 85000, sumber: 'produksi' },
     { id: 'sk-2', varianId: 'vr-nastar', produkId: 'pr-nastar', nama: 'Nastar · Klasik 500 g', tanggal: d(-2), kedaluwarsa: d(28), jumlah: 5, hpp: hppDemo['vr-nastar'], harga: 95000, sumber: 'produksi' },
+    { id: 'sk-4', resepId: 'rs-soes', varianId: '', produkId: '', nama: 'Kue soes vla', satuan: 'pcs', tanggal: d(0), kedaluwarsa: d(2), jumlah: 40, hpp: Math.round(isiSoes * 100) / 100, harga: '', sumber: 'produksi' },
     { id: 'sk-3', varianId: 'vr-risol', produkId: 'pr-risol', nama: 'Risol Mayo (titipan) · Isi 1', tanggal: d(-1), kedaluwarsa: d(1), jumlah: 20, hpp: 3500, harga: 5000, sumber: 'titipan', penitipId: 'pt-1' },
   ];
   const stokKeluar = [{ id: 'kl-1', stokId: 'sk-1', tanggal: d(-1), jumlah: 1, alasan: 'dibuang', nilai: Math.round(hppDemo['vr-brownies-o']) }];

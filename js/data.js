@@ -40,9 +40,17 @@ export function hppVarian(v, produk) {
   if (p && p.jenis === 'titipan') return num(v.hargaSetor);
   if (v.resepId) {
     const h = hitungResepId(v.resepId);
-    if (h) return h.hppPcs;
+    if (h) return isiVarian(v) * h.hppIsi + kemasanVarian(v, h);
   }
   return num(v.hppManual);
+}
+
+// Satu varian berisi berapa satuan hasil resep (misalnya mika isi 8 pcs soes). Data lama = 1.
+export const isiVarian = (v) => (v && v.resepId && num(v.isi) > 0 ? num(v.isi) : 1);
+// Kemasan per unit varian. Kosong = ikut kemasan per pcs di resep dikali isi.
+export function kemasanVarian(v, h) {
+  if (v && v.kemasanVarian !== '' && v.kemasanVarian !== undefined && v.kemasanVarian !== null) return num(v.kemasanVarian);
+  return (h ? h.kemasan : 0) * isiVarian(v);
 }
 
 export function pesananInfo(p) {
@@ -157,27 +165,43 @@ export function jadwal(tanggal) {
   return { pesanan: ps, baris: Object.values(agg).sort((a, b) => a.nama.localeCompare(b.nama)) };
 }
 
-// Kebutuhan bahan dari jadwal: per varian yang punya resep, adonan dibulatkan ke atas.
-export function belanja(baris) {
+// Rencana produksi: varian yang memakai resep yang sama digabung dalam satuan hasil resep (pcs),
+// lalu dibulatkan ke jumlah adonan.
+export function rencanaProduksi(baris) {
   const bm = bahanMap();
-  const butuh = {};
-  const tanpaResep = [];
+  const per = {}, lain = [];
   baris.forEach((b) => {
     const v = S.get('varian', b.varianId);
     const r = v?.resepId ? S.get('resep', v.resepId) : null;
-    if (!r) { tanpaResep.push(b.nama); return; }
-    const per = C.hitungResep(r, barisResep(r.id), bm, 1);
-    const kali = per.hasilBersih > 0 ? Math.ceil(b.qty / per.hasilBersih) : 0;
-    barisResep(r.id).forEach((rb) => {
+    if (!r) { lain.push(b); return; }
+    const isi = isiVarian(v);
+    const g = (per[r.id] = per[r.id] || { resep: r, pcs: 0, varian: [] });
+    g.pcs += b.qty * isi;
+    g.varian.push({ ...b, isi });
+  });
+  const resep = Object.values(per).map((g) => {
+    const h = C.hitungResep(g.resep, barisResep(g.resep.id), bm, 1);
+    const kali = h.hasilBersih > 0 ? Math.ceil(g.pcs / h.hasilBersih - 1e-9) : 0;
+    return { ...g, kali, hasilPer: h.hasilBersih, jadi: Math.floor(kali * h.hasilBersih + 1e-9), satuan: g.resep.satuanHasil || 'pcs', hppIsi: h.hppIsi };
+  }).sort((a, b) => a.resep.nama.localeCompare(b.resep.nama));
+  return { resep, lain };
+}
+
+export function belanja(baris) {
+  const bm = bahanMap();
+  const butuh = {};
+  const rp_ = rencanaProduksi(baris);
+  rp_.resep.forEach((g) => {
+    barisResep(g.resep.id).forEach((rb) => {
       const bahan = bm[rb.bahanId];
       if (!bahan) return;
       const k = rb.bahanId + '|' + rb.satuan;
       const a = (butuh[k] = butuh[k] || { bahan, satuan: rb.satuan, jumlah: 0, biaya: 0 });
-      a.jumlah += num(rb.jumlah) * kali;
-      a.biaya += (C.hargaPerSatuan(bahan, rb.satuan) || 0) * num(rb.jumlah) * kali;
+      a.jumlah += num(rb.jumlah) * g.kali;
+      a.biaya += (C.hargaPerSatuan(bahan, rb.satuan) || 0) * num(rb.jumlah) * g.kali;
     });
   });
-  return { baris: Object.values(butuh).sort((a, b) => a.bahan.nama.localeCompare(b.bahan.nama)), tanpaResep };
+  return { baris: Object.values(butuh).sort((a, b) => a.bahan.nama.localeCompare(b.bahan.nama)), tanpaResep: rp_.lain.map((b) => b.nama) };
 }
 
 // Resep yang memakai bahan tertentu, untuk info saat harga bahan berubah.
@@ -213,10 +237,10 @@ export function indexStok() {
   const ps = {};
   S.all('pesanan').forEach((p) => (ps[p.id] = p));
   S.all('itemPesanan').forEach((it) => {
-    if (!it.stokId) return;
     const p = ps[it.pesananId];
     if (!p || p.status === 'batal') return;
-    terjual[it.stokId] = (terjual[it.stokId] || 0) + num(it.qty);
+    if (it.stokId) terjual[it.stokId] = (terjual[it.stokId] || 0) + (num(it.pakai) || num(it.qty));
+    ambilList(it).forEach((a) => (terjual[a.id] = (terjual[a.id] || 0) + num(a.pcs)));
   });
   S.all('stokKeluar').forEach((k) => (keluar[k.stokId] = (keluar[k.stokId] || 0) + num(k.jumlah)));
   return { terjual, keluar };
@@ -230,6 +254,108 @@ export function stokAktif() {
   return S.all('stok').map((b) => batchInfo(b, idx)).filter((b) => b.sisa > 0)
     .sort((a, b) => String(a.kedaluwarsa || '9999').localeCompare(String(b.kedaluwarsa || '9999')) || String(a.tanggal).localeCompare(String(b.tanggal)));
 }
+// Item yang dijual dari stok resep menyimpan daftar pengambilan [{ id, pcs }].
+export function ambilList(it) {
+  const v = it?.stokAmbil;
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+
+// Grup stok: per resep (dalam satuan hasil, misalnya pcs) atau per varian (titipan, tanpa resep, data lama).
+export function stokGrup() {
+  const m = {};
+  stokAktif().forEach((b) => {
+    const key = b.resepId ? 'r:' + b.resepId : 'v:' + b.varianId;
+    const g = (m[key] = m[key] || { key, resepId: b.resepId || '', varianId: b.resepId ? '' : b.varianId, produkId: b.produkId || '', nama: b.nama, satuan: b.satuan || '', sisa: 0, batch: [] });
+    g.sisa += b.sisa;
+    g.batch.push(b);
+  });
+  return Object.values(m).sort((a, b) => a.nama.localeCompare(b.nama));
+}
+
+// Varian yang bisa dijual dari stok, beserta jumlah tersedia dalam unit varian.
+export function opsiJual(grup = stokGrup()) {
+  const out = [];
+  const pool = {};
+  grup.filter((g) => g.resepId).forEach((g) => (pool[g.resepId] = g));
+  S.all('varian').forEach((v) => {
+    const pr = S.get('produk', v.produkId);
+    if (!pr) return;
+    const gv = grup.find((g) => g.varianId === v.id);
+    const isi = isiVarian(v);
+    const dariPool = v.resepId && pool[v.resepId] ? Math.floor(pool[v.resepId].sisa / isi + 1e-9) : 0;
+    const total = (gv ? gv.sisa : 0) + dariPool;
+    if (total > 0) out.push({ varianId: v.id, produkId: pr.id, nama: `${pr.nama} · ${v.nama}`, isi, resepId: v.resepId || '', tersedia: total, harga: num(v.harga), fotoId: pr.fotoId || '' });
+  });
+  return out.sort((a, b) => a.nama.localeCompare(b.nama));
+}
+
+// Ambil stok untuk penjualan: stok khusus varian dulu, lalu stok resep (pcs). FIFO menurut kedaluwarsa.
+// items: [{ varianId, qty, harga }]. Kembalikan { ops, total } atau { error }.
+export function alokasiStok(items, pesananId) {
+  const grup = stokGrup();
+  const sisa = {};
+  grup.forEach((g) => g.batch.forEach((b) => (sisa[b.id] = b.sisa)));
+  const ops = [];
+  let total = 0;
+  for (const it of items) {
+    const v = S.get('varian', it.varianId);
+    const pr = v ? S.get('produk', v.produkId) : null;
+    if (!v || !pr) return { error: 'Produk tidak ditemukan' };
+    const nama = `${pr.nama} · ${v.nama}`;
+    let q = num(it.qty);
+    const harga = num(it.harga);
+    const gv = grup.find((g) => g.varianId === v.id);
+    for (const b of gv ? gv.batch : []) {
+      if (q <= 0) break;
+      const ambil = Math.min(q, sisa[b.id]);
+      if (ambil <= 0) continue;
+      sisa[b.id] -= ambil;
+      q -= ambil;
+      total += ambil * harga;
+      ops.push(['itemPesanan', { pesananId, produkId: pr.id, varianId: v.id, stokId: b.id, nama, qty: ambil, harga, hpp: num(b.hpp) }]);
+    }
+    if (q > 0) {
+      const gr = v.resepId ? grup.find((g) => g.resepId === v.resepId) : null;
+      const isi = isiVarian(v);
+      let perlu = q * isi;
+      const poolSebelum = gr ? gr.batch.reduce((a, b) => a + sisa[b.id], 0) : 0;
+      const ambilan = [];
+      let modal = 0;
+      for (const b of gr ? gr.batch : []) {
+        if (perlu <= 1e-9) break;
+        const a = Math.min(perlu, sisa[b.id]);
+        if (a <= 0) continue;
+        sisa[b.id] -= a;
+        perlu -= a;
+        modal += a * num(b.hpp);
+        ambilan.push({ id: b.id, pcs: Math.round(a * 1000) / 1000 });
+      }
+      if (perlu > 1e-9) {
+        return { error: gr ? `Stok tidak cukup untuk ${nama}. Sisa ${gr.nama} tinggal ${Math.round(poolSebelum * 100) / 100} ${gr.satuan || 'pcs'}.` : `Stok ${nama} tidak cukup.` };
+      }
+      const h = hitungResepId(v.resepId);
+      const hpp = modal / q + kemasanVarian(v, h);
+      total += q * harga;
+      ops.push(['itemPesanan', { pesananId, produkId: pr.id, varianId: v.id, nama, qty: q, harga, hpp: Math.round(hpp * 100) / 100, stokAmbil: ambilan }]);
+    }
+  }
+  return { ops, total };
+}
+
+// Umur simpan untuk stok resep: yang terpendek dari produk yang memakai resep itu.
+export function umurResep(resepId) {
+  const umur = S.all('varian').filter((v) => v.resepId === resepId).map((v) => num(S.get('produk', v.produkId)?.umurSimpan)).filter((u) => u > 0);
+  return umur.length ? Math.min(...umur) : 0;
+}
+export function batchResep(resepId, tanggal, jumlah, sumber) {
+  const r = S.get('resep', resepId);
+  const h = hitungResepId(resepId);
+  const u = umurResep(resepId);
+  return { resepId, varianId: '', produkId: '', nama: r.nama, satuan: r.satuanHasil || 'pcs', tanggal, kedaluwarsa: u ? C.addDays(tanggal, u) : '', jumlah, hpp: Math.round((h?.hppIsi || 0) * 100) / 100, harga: '', sumber };
+}
+
 export function stokPerVarian() {
   const m = {};
   stokAktif().forEach((b) => {

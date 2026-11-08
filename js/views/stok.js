@@ -5,6 +5,7 @@ import { chips, field, money, kosong, kv, formData, tagBayar } from './ui.js';
 import { template } from './orders.js';
 import { avProduk } from './products.js';
 import { fotoUrl } from '../foto.js';
+import { ilus } from '../ilustrasi.js';
 import { dataUrlKeFile } from '../util.js';
 
 let draftJual = null, draftTerima = null;
@@ -18,12 +19,21 @@ function labelSisa(b) {
   return `<span class="tag dim">${d} hari lagi</span>`;
 }
 
-function opsiVarianSendiri(sel) {
+// Pilihan tambah stok: resep (dicatat dalam satuan hasil, misalnya pcs) atau varian tanpa resep.
+function opsiTambahStok(sel) {
   const S = D.store();
-  return S.all('produk').filter((p) => p.jenis !== 'titipan').sort((a, b) => a.nama.localeCompare(b.nama)).map((p) => {
-    const vs = D.varianDari(p.id);
-    return vs.length ? `<optgroup label="${h(p.nama)}">${vs.map((v) => `<option value="${h(v.id)}" ${v.id === sel ? 'selected' : ''}>${h(p.nama)} · ${h(v.nama)}</option>`).join('')}</optgroup>` : '';
-  }).join('');
+  const reseps = S.all('resep').filter((r) => S.all('varian').some((v) => v.resepId === r.id)).sort((a, b) => a.nama.localeCompare(b.nama));
+  const tanpa = S.all('produk').filter((p) => p.jenis !== 'titipan').flatMap((p) => D.varianDari(p.id).filter((v) => !v.resepId).map((v) => ({ v, p })));
+  return (reseps.length ? `<optgroup label="Dari resep (bisa dijual dalam berbagai paket)">${reseps.map((r) => `<option value="r:${h(r.id)}" ${'r:' + r.id === sel ? 'selected' : ''}>${h(r.nama)} (${h(r.satuanHasil || 'pcs')})</option>`).join('')}</optgroup>` : '')
+    + (tanpa.length ? `<optgroup label="Produk tanpa resep">${tanpa.map(({ v, p }) => `<option value="v:${h(v.id)}" ${'v:' + v.id === sel ? 'selected' : ''}>${h(p.nama)} · ${h(v.nama)}</option>`).join('')}</optgroup>` : '');
+}
+
+// Contoh konversi stok resep ke paket, misalnya "40 pcs = 5 mika isi 8".
+function konversi(g) {
+  if (!g.resepId) return '';
+  const vs = D.store().all('varian').filter((v) => v.resepId === g.resepId && D.isiVarian(v) > 1);
+  if (!vs.length) return '';
+  return vs.slice(0, 3).map((v) => `${angka(Math.floor(g.sisa / D.isiVarian(v) + 1e-9))} ${h(v.nama)}`).join(' atau ');
 }
 
 // Lembar keluar stok: dibuang (rugi) atau dikembalikan ke penitip.
@@ -51,11 +61,11 @@ export function bukaKeluar(stokId, ctx) {
   });
 }
 
-function barisJual(it, i, stok) {
+function barisJual(it, i, opsi) {
   return `<div class="line-edit" data-baris="${i}">
     <div class="row" style="align-items:flex-end">
       <div class="field grow" style="margin-bottom:8px"><label for="js-v-${i}">Produk</label><select id="js-v-${i}" name="varian[]"><option value="">Pilih dari stok</option>
-        ${stok.map((s) => `<option value="${h(s.varianId)}" ${s.varianId === it.varianId ? 'selected' : ''}>${h(s.nama)} (sisa ${angka(s.sisa, 2)})</option>`).join('')}</select></div>
+        ${opsi.map((s) => `<option value="${h(s.varianId)}" ${s.varianId === it.varianId ? 'selected' : ''}>${h(s.nama)} (tersedia ${angka(s.tersedia, 2)})</option>`).join('')}</select></div>
       <button type="button" class="iconbtn" data-act="hapusItem" data-i="${i}" aria-label="Hapus baris ini" style="margin-bottom:8px">${ic('trash')}</button>
     </div>
     <div class="grid2"><div class="field" style="margin-bottom:0"><label for="js-q-${i}">Jumlah</label><input type="number" inputmode="numeric" min="0" step="any" id="js-q-${i}" name="qty[]" value="${h(it.qty ?? 1)}"></div>
@@ -66,26 +76,25 @@ function bacaJual(form) {
   const f = formData(form);
   draftJual = { ...draftJual, ...f, items: (f.varian || []).map((v, i) => ({ varianId: v, qty: f.qty[i], harga: f.harga[i] })) };
 }
-
-function hargaVarian(varianId, stok) {
-  const s = stok.find((x) => x.varianId === varianId);
-  const v = D.store().get('varian', varianId);
-  return s?.batch[0]?.harga ? num(s.batch[0].harga) : num(v?.harga);
-}
+const hargaVarian = (varianId) => num(D.store().get('varian', varianId)?.harga);
 
 export const views = {
   stok: {
     title: 'Stok ready',
     fab: { label: 'Tambah stok', go: 'stokForm' },
     render(p, ctx) {
-      const list = D.stokPerVarian();
-      let out = `<div class="btns" style="margin-bottom:12px"><button class="btn pri" data-go="jualStok" ${list.length ? '' : 'disabled'}>${ic('wallet')}Jual dari stok</button><button class="btn" data-act="promo" ${list.length ? '' : 'disabled'}>${ic('share')}Teks promosi</button></div>`;
+      const list = D.stokGrup();
+      const bisaJual = D.opsiJual(list).length > 0;
+      let out = `<div class="btns" style="margin-bottom:12px"><button class="btn pri" data-go="jualStok" ${bisaJual ? '' : 'disabled'}>${ic('wallet')}Jual dari stok</button><button class="btn" data-act="promo" ${bisaJual ? '' : 'disabled'}>${ic('share')}Teks promosi</button></div>`;
       if (!list.length) return out + kosong('box', 'Stok kosong', 'Tambah stok saat produksi untuk dijual langsung, atau kelebihan produksi akan masuk ke sini otomatis.', `<button class="btn pri" data-go="stokForm">${ic('plus')}Tambah stok</button>`);
       const kd = D.hampirKedaluwarsa(1);
       if (kd.length) out += `<div class="banner">${ic('alert')}<span class="grow">${kd.length} stok mendekati atau lewat kedaluwarsa.</span></div>`;
-      list.forEach((s) => {
-        out += `<div class="sec"><span class="row" style="gap:10px">${avProduk(ctx.S.get('produk', s.produkId))}${h(s.nama)}</span><span class="small muted num">sisa ${angka(s.sisa, 2)}</span></div><div class="list">${s.batch.map((b) => `
-          <div class="item"><div class="grow"><div class="t">${angka(b.sisa, 2)} dari ${angka(b.jumlah, 2)} ${labelSisa(b)}</div>
+      list.forEach((g) => {
+        const sat = g.satuan ? ' ' + h(g.satuan) : '';
+        const kv_ = konversi(g);
+        const av = g.resepId ? `<div class="av ilus-av">${ilus('toples', 34)}</div>` : avProduk(ctx.S.get('produk', g.produkId));
+        out += `<div class="sec"><span class="row" style="gap:10px">${av}<span>${h(g.nama)}${kv_ ? `<span class="small muted" style="display:block;font-weight:500">≈ ${kv_}</span>` : ''}</span></span><span class="small muted num">sisa ${angka(g.sisa, 2)}${sat}</span></div><div class="list">${g.batch.map((b) => `
+          <div class="item"><div class="grow"><div class="t">${angka(b.sisa, 2)} dari ${angka(b.jumlah, 2)}${sat} ${labelSisa(b)}</div>
             <div class="s">${b.penitipId ? 'Titipan ' + h(ctx.S.get('penitip', b.penitipId)?.nama || '') + ' · ' : ''}Masuk ${h(tgl(b.tanggal))}${b.kedaluwarsa ? ' · tahan s.d. ' + h(tgl(b.kedaluwarsa, { hari: false })) : ''}</div></div>
             <button class="btn sm" data-act="keluar" data-id="${h(b.id)}">Sisa</button></div>`).join('')}</div>`;
       });
@@ -94,9 +103,10 @@ export const views = {
     actions: {
       keluar: (b, e, ctx) => bukaKeluar(b.dataset.id, ctx),
       promo: (b, e, ctx) => {
-        const daftar = D.stokPerVarian().map((s) => `• ${s.nama}: ${rp(hargaVarian(s.varianId, [s]))}`).join('\n');
+        const opsi = D.opsiJual();
+        const daftar = opsi.map((s) => `• ${s.nama}: ${rp(s.harga)}`).join('\n');
         const teks = isiTemplate(template('promoReady').teks, { toko: D.setelan().namaToko || '', daftar });
-        bukaTeksPromo('Promosi stok ready', teks, '', D.stokPerVarian().map((s) => ctx.S.get('produk', s.produkId)?.fotoId));
+        bukaTeksPromo('Promosi stok ready', teks, '', opsi.map((s) => s.fotoId));
       },
     },
   },
@@ -105,31 +115,43 @@ export const views = {
     form: true,
     title: 'Tambah stok',
     render(p, ctx) {
-      const S = ctx.S;
-      if (!S.all('varian').some((v) => S.get('produk', v.produkId)?.jenis !== 'titipan')) return kosong('cake', 'Belum ada produk', 'Tambahkan produk buatan sendiri dulu.', `<button class="btn pri" data-go="productForm">${ic('plus')}Tambah produk</button>`);
+      const opsi = opsiTambahStok(p.pilih || '');
+      if (!opsi) return kosong('cake', 'Belum ada produk', 'Tambahkan produk buatan sendiri dulu.', `<button class="btn pri" data-go="productForm">${ic('plus')}Tambah produk</button>`);
       return `<form novalidate><div class="card">
-        <p class="small muted" style="margin-top:0">Untuk kue buatan sendiri yang dijual tanpa pesanan. Titipan dicatat lewat menu Titipan & penitip.</p>
-        ${field('Produk', `<select id="sf-v" name="varianId" required><option value="">Pilih produk</option>${opsiVarianSendiri(p.varian)}</select>`, { id: 'sf-v' })}
+        <p class="small muted" style="margin-top:0">Untuk kue buatan sendiri yang dijual tanpa pesanan. Stok dari resep dicatat dalam satuan hasil (misalnya pcs), lalu bisa dijual satuan atau per paket. Titipan dicatat lewat menu Titipan & penitip.</p>
+        ${field('Stok', `<select id="sf-v" name="pilih" required><option value="">Pilih</option>${opsi}</select>`, { id: 'sf-v' })}
         <div class="grid2">${field('Jumlah', `<input type="number" inputmode="numeric" min="0" step="any" id="sf-j" name="jumlah" value="${h(p.jumlah || '')}" required>`, { id: 'sf-j' })}
         ${field('Tanggal produksi', `<input type="date" id="sf-t" name="tanggal" value="${h(p.tanggal || D.today())}" required>`, { id: 'sf-t' })}</div>
         <div class="small muted" id="sf-info" aria-live="polite"></div>
       </div><button class="btn pri block">${ic('check')}Simpan stok</button></form>`;
     },
-    mount(el) { const f = el.querySelector('form'); if (f) views.stokForm.input(f.varianId); },
+    mount(el) { const f = el.querySelector('form'); if (f) views.stokForm.input(f.pilih); },
     input(el, ctx) {
       const form = el?.form; if (!form) return;
-      const v = D.store().get('varian', form.varianId.value);
-      const pr = v ? D.store().get('produk', v.produkId) : null;
-      const kd = D.tglKedaluwarsa(form.tanggal.value, pr);
-      form.querySelector('#sf-info').textContent = v ? `Modal ${rp(D.hppVarian(v, pr))} per item${kd ? ` · tahan sampai ${tgl(kd)}` : ''}` : '';
+      const [jenis, id] = (form.pilih.value || ':').split(':');
+      const info = form.querySelector('#sf-info');
+      if (jenis === 'r') {
+        const r = D.store().get('resep', id);
+        const b = D.batchResep(id, form.tanggal.value, 0, '');
+        info.textContent = `Modal ${rp(b.hpp)} per ${r.satuanHasil || 'pcs'} (tanpa kemasan)${b.kedaluwarsa ? ` · tahan sampai ${tgl(b.kedaluwarsa)}` : ''}`;
+      } else if (jenis === 'v') {
+        const v = D.store().get('varian', id);
+        const pr = v ? D.store().get('produk', v.produkId) : null;
+        const kd = D.tglKedaluwarsa(form.tanggal.value, pr);
+        info.textContent = v ? `Modal ${rp(D.hppVarian(v, pr))} per item${kd ? ` · tahan sampai ${tgl(kd)}` : ''}` : '';
+      } else info.textContent = '';
     },
     change(el, ctx) { views.stokForm.input(el, ctx); },
     submit(form, ctx) {
       const f = formData(form);
-      const v = ctx.S.get('varian', f.varianId);
-      if (!v || !(num(f.jumlah) > 0)) return toast('Pilih produk dan isi jumlah');
-      const pr = ctx.S.get('produk', v.produkId);
-      ctx.S.put('stok', { varianId: v.id, produkId: v.produkId, nama: `${pr.nama} · ${v.nama}`, tanggal: f.tanggal, kedaluwarsa: D.tglKedaluwarsa(f.tanggal, pr), jumlah: num(f.jumlah), hpp: Math.round(D.hppVarian(v, pr) * 100) / 100, harga: num(v.harga), sumber: 'manual' });
+      const [jenis, id] = (f.pilih || ':').split(':');
+      if (!id || !(num(f.jumlah) > 0)) return toast('Pilih stok dan isi jumlah');
+      if (jenis === 'r') ctx.S.put('stok', D.batchResep(id, f.tanggal, num(f.jumlah), 'manual'));
+      else {
+        const v = ctx.S.get('varian', id);
+        const pr = ctx.S.get('produk', v.produkId);
+        ctx.S.put('stok', { varianId: v.id, produkId: v.produkId, nama: `${pr.nama} · ${v.nama}`, tanggal: f.tanggal, kedaluwarsa: D.tglKedaluwarsa(f.tanggal, pr), jumlah: num(f.jumlah), hpp: Math.round(D.hppVarian(v, pr) * 100) / 100, harga: num(v.harga), sumber: 'manual' });
+      }
       toast('Stok tersimpan');
       ctx.back();
     },
@@ -140,13 +162,13 @@ export const views = {
     enter() { draftJual = null; },
     title: 'Jual dari stok',
     render(p, ctx) {
-      const stok = D.stokPerVarian();
-      if (!stok.length) return kosong('box', 'Stok kosong', 'Belum ada stok untuk dijual.');
-      if (!draftJual) draftJual = { items: [{ qty: 1, varianId: p.varian || '' , harga: p.varian ? hargaVarian(p.varian, stok) : '' }], pelangganId: '', bayar: 'lunas', metode: 'Tunai' };
+      const opsi = D.opsiJual();
+      if (!opsi.length) return kosong('box', 'Stok kosong', 'Belum ada stok untuk dijual.');
+      if (!draftJual) draftJual = { items: [{ qty: 1, varianId: p.varian || '', harga: p.varian ? hargaVarian(p.varian) : '' }], pelangganId: '', bayar: 'lunas', metode: 'Tunai' };
       const d = draftJual;
       const pels = ctx.S.all('pelanggan').sort((a, b) => a.nama.localeCompare(b.nama));
       return `<form novalidate>
-        <div id="baris-jual">${d.items.map((it, i) => barisJual(it, i, stok)).join('')}</div>
+        <div id="baris-jual">${d.items.map((it, i) => barisJual(it, i, opsi)).join('')}</div>
         <button type="button" class="btn block" data-act="tambahItem" style="margin-bottom:12px">${ic('plus')}Tambah produk</button>
         <div class="card">
           ${field('Pelanggan (opsional)', `<select id="js-pel" name="pelangganId"><option value="">Tanpa nama</option>${pels.map((x) => `<option value="${h(x.id)}" ${x.id === d.pelangganId ? 'selected' : ''}>${h(x.nama)}</option>`).join('')}</select>`, { id: 'js-pel' })}
@@ -161,7 +183,7 @@ export const views = {
       const form = el.form || el.closest('form'); if (!form) return;
       if (el.name === 'varian[]') {
         const i = el.closest('[data-baris]').dataset.baris;
-        form.querySelector('#js-h-' + i).value = hargaVarian(el.value, D.stokPerVarian()) || '';
+        form.querySelector('#js-h-' + i).value = hargaVarian(el.value) || '';
       }
       bacaJual(form);
       ringkasJual(form);
@@ -173,41 +195,18 @@ export const views = {
     },
     submit(form, ctx) {
       bacaJual(form);
-      const S = ctx.S;
-      const stok = D.stokPerVarian();
       const items = draftJual.items.filter((it) => it.varianId && num(it.qty) > 0);
       if (!items.length) return toast('Pilih produk dari stok');
-      // Cek jumlah cukup per varian
-      const butuh = {};
-      items.forEach((it) => (butuh[it.varianId] = (butuh[it.varianId] || 0) + num(it.qty)));
-      for (const [vid, q] of Object.entries(butuh)) {
-        const s = stok.find((x) => x.varianId === vid);
-        if (!s || s.sisa < q) return toast(`Stok ${s ? s.nama : 'produk'} hanya ${angka(s?.sisa || 0, 2)}`);
-      }
       const id = 'ps' + Date.now().toString(36);
       const t = D.today();
-      const ops = [];
-      let total = 0;
-      // Ambil dari stok yang paling cepat kedaluwarsa dulu
-      items.forEach((it) => {
-        let q = num(it.qty);
-        const s = stok.find((x) => x.varianId === it.varianId);
-        for (const b of s.batch) {
-          if (q <= 0) break;
-          const ambil = Math.min(q, b.sisa);
-          if (ambil <= 0) continue;
-          b.sisa -= ambil;
-          q -= ambil;
-          total += ambil * num(it.harga);
-          ops.push(['itemPesanan', { pesananId: id, produkId: b.produkId, varianId: b.varianId, stokId: b.id, nama: b.nama, qty: ambil, harga: num(it.harga), hpp: num(b.hpp) }]);
-        }
-      });
-      ops.unshift(['pesanan', { id, kode: D.kodeBaru(), jenis: 'ready', pelangganId: draftJual.pelangganId || '', tglPesan: t, tglAmbil: t, jam: '', cara: 'ambil', diskon: 0, ongkir: 0, status: 'selesai', tglSelesai: t, catatan: '' }]);
-      if (draftJual.bayar !== 'belum') ops.push(['pembayaran', { pesananId: id, nominal: total, tanggal: t, metode: draftJual.metode || 'Tunai' }]);
-      S.putMany(ops);
+      const hasil = D.alokasiStok(items, id);
+      if (hasil.error) return toast(hasil.error, 3500);
+      const ops = [['pesanan', { id, kode: D.kodeBaru(), jenis: 'ready', pelangganId: draftJual.pelangganId || '', tglPesan: t, tglAmbil: t, jam: '', cara: 'ambil', diskon: 0, ongkir: 0, status: 'selesai', tglSelesai: t, catatan: '' }], ...hasil.ops];
+      if (draftJual.bayar !== 'belum') ops.push(['pembayaran', { pesananId: id, nominal: hasil.total, tanggal: t, metode: draftJual.metode || 'Tunai' }]);
+      ctx.S.putMany(ops);
       draftJual = null;
       konfeti();
-      toast(`Terjual ${rp(total)}`);
+      toast(`Terjual ${rp(hasil.total)}`);
       ctx.replace('order', { id });
     },
   },

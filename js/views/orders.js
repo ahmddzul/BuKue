@@ -276,7 +276,7 @@ export const views = {
         list = list.filter(({ p, i }) => [D.namaPel(i.pel), p.kode, p.catatan, ...i.items.map((x) => x.nama)].join(' ').toLowerCase().includes(q));
       }
       if (f === 'aktif' || f === 'belum' || f === 'hariini') list.sort((a, b) => String(a.p.tglAmbil).localeCompare(String(b.p.tglAmbil)));
-      const nPO = D.openPOAktif().length, nStok = D.stokPerVarian().length;
+      const nPO = D.openPOAktif().length, nStok = D.opsiJual().length;
       let out = `<div class="btns" style="margin-bottom:10px"><button class="btn sm" data-go="openPOs">${ic('calendar')}Open PO${nPO ? ` <span class="tag acc">${nPO} buka</span>` : ''}</button><button class="btn sm" data-go="jualStok" ${nStok ? '' : 'disabled'}>${ic('box')}Jual dari stok</button></div>`;
       out += chips('filter', FILTER, f, { bawaan: 'aktif', label: 'Saring pesanan', wrap: false });
       out += `<div class="field" style="margin-top:6px"><label for="cari-pesanan" class="sr">Cari pesanan</label><input type="search" id="cari-pesanan" placeholder="Cari nama, kode, atau produk" value="${h(cari)}"></div>`;

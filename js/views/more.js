@@ -39,7 +39,7 @@ export const views = {
           ${menuItem('bahan', 'sack', 'Bahan baku', `${S.all('bahan').length} bahan dan harganya`)}
           ${menuItem('customers', 'users', 'Pelanggan', `${S.all('pelanggan').length} pelanggan`)}
           ${menuItem('kiriman', 'truck', 'Kiriman', kiriman ? `${kiriman} pesanan perlu diantar` : 'Pesanan yang diantar atau lewat kurir')}
-          ${menuItem('stok', 'box', 'Stok ready', (() => { const n = D.stokPerVarian().reduce((a, x) => a + x.sisa, 0); const kd = D.hampirKedaluwarsa(1).length; return n ? `${angka(n, 2)} item siap jual${kd ? ` · ${kd} hampir kedaluwarsa` : ''}` : 'Kue siap jual tanpa pesanan'; })())}
+          ${menuItem('stok', 'box', 'Stok ready', (() => { const n = D.stokGrup().reduce((a, x) => a + x.sisa, 0); const kd = D.hampirKedaluwarsa(1).length; return n ? `${angka(n, 2)} item siap jual${kd ? ` · ${kd} hampir kedaluwarsa` : ''}` : 'Kue siap jual tanpa pesanan'; })())}
           ${menuItem('penitips', 'basket', 'Titipan & penitip', (() => { const b = D.titipanBelumSetor(); return b.total ? `Belum disetor ${rp(b.total)}` : `${S.all('penitip').length} penitip`; })())}
           ${menuItem('openPOs', 'calendar', 'Open PO', `${D.openPOAktif().length} sedang buka`)}
         </div>
@@ -359,6 +359,7 @@ export const views = {
         ['Lupa kata sandi?', 'Buka Google Sheet BuKue di komputer, lalu menu BuKue > Reset kata sandi akun.'],
         ['Di iPhone, teks tagihan tidak ikut terkirim bersama QRIS.', 'WhatsApp di iPhone kadang hanya menerima gambar. BuKue sudah menyalin teksnya lebih dulu, jadi tinggal tempel di kolom chat.'],
         ['Di mana data saya disimpan?', 'Di Google Sheet milik kamu sendiri. Kata sandi disimpan dalam bentuk acak (hash), bukan teks asli. Gambar QRIS ada di folder Google Drive kamu.'],
+        ['Satu resep mau dijual dalam beberapa paket, misalnya soes 40 pcs jadi mika isi 8, isi 4, dan satuan?', 'Buat resep soes dengan hasil 40 pcs. Di produk Kue Soes, buat varian Mika isi 8, Mika isi 4, dan Satuan, semuanya memakai resep soes, lalu isi "Isi (pcs dari resep)" dan "Kemasan per paket". HPP, jadwal produksi, daftar belanja, dan stok ready otomatis menghitung dalam pcs.'],
         ['Bagaimana kelebihan produksi masuk ke stok ready?', 'Di menu Produksi, ketuk "Produksi selesai" lalu isi jumlah yang benar-benar jadi. Kalau lebih dari pesanan, kelebihannya otomatis masuk Stok ready.'],
         ['Apakah kue yang dibuang mengurangi untung?', 'Ya. Sisa buatan sendiri yang dibuang dihitung rugi senilai modalnya. Titipan yang rusak atau dikembalikan tidak mengurangi untungmu.'],
         ['Bagaimana menghitung setoran ke penitip?', 'Buka Titipan & penitip, pilih penitip. "Belum disetor" berisi semua titipan yang terjual sejak setoran terakhir dikali harga setor. Setelah transfer, ketuk "Tandai sudah disetor".'],

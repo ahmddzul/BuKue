@@ -2,7 +2,7 @@
 
 Aplikasi pencatatan bisnis kue rumahan di HP: pesanan PO, HPP dari harga bahan, jadwal produksi dan daftar belanja, serta tagihan WhatsApp dengan QRIS. Data tersimpan di Google Sheet milik kamu sendiri, dan bisa dipakai di beberapa HP sekaligus dengan satu akun.
 
-Versi sekarang: **1.0.1**
+Versi sekarang: **1.1.0**
 
 ---
 
@@ -13,6 +13,7 @@ Versi sekarang: **1.0.1**
 - **Bahan baku**: harga beli, isi kemasan, konversi kg/g, L/ml, butir, sdm, sdt. Harga per gram/ml dihitung otomatis. Riwayat harga tersimpan, dan saat harga berubah BuKue memberi tahu resep mana yang ikut berubah.
 - **Resep & HPP**: HPP per pcs/loyang/toples dari bahan, gas/listrik (persen atau Rp per adonan), tenaga, susut, dan kemasan. Ada saran harga jual (target margin atau untung Rp, dibulatkan ke Rp 500 atau Rp 1.000) dan simulasi "mau buat 50 pcs".
 - **Foto produk** (opsional): ambil dari galeri atau kamera, diperkecil otomatis, disimpan di folder Drive **BuKue File**, tampil di semua HP dan tetap tampil saat offline. Foto bisa dibagikan bersama teks promosi stok ready dan open PO.
+- **Paket dari satu resep**: satu resep (misalnya soes 40 pcs) bisa dijual sebagai mika isi 8, isi 4, atau satuan. Tiap varian punya isi dan biaya kemasan sendiri. HPP, jadwal produksi, daftar belanja, dan stok ready menghitung dalam pcs, jadi stok 40 soes bisa dijual dalam paket apa saja.
 - **Produk & varian**: buatan sendiri (terhubung ke resep atau HPP manual) atau titipan (harga setor). Satuan jual bisa diatur per produk.
 - **Pesanan**: pelanggan, produk dan varian, tanggal dan jam ambil, cara ambil (diambil, diantar, kurir), alamat, catatan, diskon, ongkir, DP. Status Baru sampai Selesai atau Batal.
 - **Pembayaran**: dicatat sebagai riwayat. Status Belum bayar, DP, atau Lunas dihitung otomatis.

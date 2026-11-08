@@ -122,7 +122,12 @@ function barisVarian(v, i, jenis) {
         ? `<div class="field" style="margin-bottom:8px"><label for="vr-s-${i}">Harga setor</label>${money('vsetor[]', v.hargaSetor, { id: 'vr-s-' + i })}</div><input type="hidden" name="vresep[]" value=""><input type="hidden" name="vhpp[]" value="">`
         : `<div class="field" style="margin-bottom:8px"><label for="vr-r-${i}">Resep</label><select id="vr-r-${i}" name="vresep[]"><option value="">Tanpa resep</option>${reseps.map((r) => `<option value="${h(r.id)}" ${r.id === v.resepId ? 'selected' : ''}>${h(r.nama)}</option>`).join('')}</select></div><input type="hidden" name="vsetor[]" value="">`}
     </div>
-    ${jenis === 'titipan' ? '' : `<div class="field" data-hppm="${i}" ${v.resepId ? 'hidden' : ''} style="margin-bottom:8px"><label for="vr-m-${i}">HPP manual</label>${money('vhpp[]', v.hppManual, { id: 'vr-m-' + i, placeholder: 'Kalau belum punya resep' })}</div>`}
+    ${jenis === 'titipan' ? '<input type="hidden" name="visi[]" value=""><input type="hidden" name="vkem[]" value="">' : `<div class="field" data-hppm="${i}" ${v.resepId ? 'hidden' : ''} style="margin-bottom:8px"><label for="vr-m-${i}">HPP manual</label>${money('vhpp[]', v.hppManual, { id: 'vr-m-' + i, placeholder: 'Kalau belum punya resep' })}</div>
+    <p class="small muted" data-paket-hint="${i}" ${v.resepId ? '' : 'hidden'} style="margin:0 0 6px">Satu resep dijual dalam beberapa paket? Isi berapa pcs per paket, misalnya mika isi 8.</p>
+    <div class="grid2" data-paket="${i}" ${v.resepId ? '' : 'hidden'}>
+      <div class="field" style="margin-bottom:8px"><label for="vr-i-${i}">Isi (pcs dari resep)</label><input type="number" inputmode="decimal" min="0" step="any" id="vr-i-${i}" name="visi[]" value="${h(v.isi ?? '')}" placeholder="1"></div>
+      <div class="field" style="margin-bottom:8px"><label for="vr-k-${i}">Kemasan per paket</label>${money('vkem[]', v.kemasanVarian, { id: 'vr-k-' + i, placeholder: 'Ikut resep' })}</div>
+    </div>`}
     <div class="small muted" data-vinfo="${i}"></div>
   </div>`;
 }
@@ -136,15 +141,22 @@ function infoVarian(form) {
     const resepId = (f.vresep || [])[i];
     const hppm = form.querySelector(`[data-hppm="${i}"]`);
     if (hppm) hppm.hidden = !!resepId;
-    const hpp = D.hppVarian({ resepId, hppManual: (f.vhpp || [])[i], hargaSetor: (f.vsetor || [])[i] }, { jenis });
+    const paket = form.querySelector(`[data-paket="${i}"]`);
+    if (paket) paket.hidden = !resepId;
+    const ph = form.querySelector(`[data-paket-hint="${i}"]`);
+    if (ph) ph.hidden = !resepId;
+    const isi = (f.visi || [])[i], kem = (f.vkem || [])[i];
+    const hpp = D.hppVarian({ resepId, hppManual: (f.vhpp || [])[i], hargaSetor: (f.vsetor || [])[i], isi, kemasanVarian: kem }, { jenis });
     const harga = num((f.vharga || [])[i]);
-    el.textContent = hpp > 0 ? `Modal ${rp(hpp)} · untung ${rp(harga - hpp)}${harga > 0 ? ` (${Math.round(((harga - hpp) / harga) * 100)}%)` : ''}` : 'Modal belum diketahui';
+    const r = resepId ? D.store().get('resep', resepId) : null;
+    const isiTeks = r && num(isi) > 1 ? `Isi ${angka(isi, 2)} ${r.satuanHasil || 'pcs'} · ` : '';
+    el.textContent = hpp > 0 ? `${isiTeks}Modal ${rp(hpp)} · untung ${rp(harga - hpp)}${harga > 0 ? ` (${Math.round(((harga - hpp) / harga) * 100)}%)` : ''}` : 'Modal belum diketahui';
   });
 }
 
 function bacaDraftP(form) {
   const f = formData(form);
-  draftP = { ...draftP, ...f, varian: (f.vnama || []).map((n, i) => ({ ...(draftP.varian[i] || {}), nama: n, harga: f.vharga[i], resepId: f.vresep?.[i] || '', hppManual: f.vhpp?.[i] || '', hargaSetor: f.vsetor?.[i] || '' })) };
+  draftP = { ...draftP, ...f, varian: (f.vnama || []).map((n, i) => ({ ...(draftP.varian[i] || {}), nama: n, harga: f.vharga[i], resepId: f.vresep?.[i] || '', hppManual: f.vhpp?.[i] || '', hargaSetor: f.vsetor?.[i] || '', isi: f.visi?.[i] ?? '', kemasanVarian: f.vkem?.[i] ?? '' })) };
 }
 function bacaDraftR(form) {
   const { f, baris } = resepDariForm(form);
@@ -278,7 +290,7 @@ export const views = {
       const ids = new Set();
       vs.forEach((v, i) => {
         if (v.id) ids.add(v.id);
-        ops.push(['varian', { ...(v.id ? S.get('varian', v.id) || {} : {}), ...(v.id ? { id: v.id } : {}), produkId: pid, nama: v.nama || 'Original', harga: num(v.harga), resepId: d.jenis === 'titipan' ? '' : v.resepId || '', hppManual: v.hppManual === '' ? '' : num(v.hppManual), hargaSetor: d.jenis === 'titipan' ? num(v.hargaSetor) : '', urut: i + 1 }]);
+        ops.push(['varian', { ...(v.id ? S.get('varian', v.id) || {} : {}), ...(v.id ? { id: v.id } : {}), produkId: pid, nama: v.nama || 'Original', harga: num(v.harga), resepId: d.jenis === 'titipan' ? '' : v.resepId || '', hppManual: v.hppManual === '' ? '' : num(v.hppManual), hargaSetor: d.jenis === 'titipan' ? num(v.hargaSetor) : '', isi: d.jenis !== 'titipan' && v.resepId && num(v.isi) > 0 ? num(v.isi) : '', kemasanVarian: d.jenis !== 'titipan' && v.resepId && v.kemasanVarian !== '' && v.kemasanVarian !== undefined ? num(v.kemasanVarian) : '', urut: i + 1 }]);
       });
       lama.filter((v) => !ids.has(v.id)).forEach((v) => ops.push(['varian', { ...v, deleted: true }]));
       S.putMany(ops);

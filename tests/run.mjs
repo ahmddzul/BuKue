@@ -85,6 +85,59 @@ await uji('template: kata kunci kosong menghapus barisnya', () => {
   assert.equal(C.isiTemplate(t, { sapaan: 'Kak', nama: 'Rina', dp: '', sisa: 'Rp 5.000', rekening: '' }), 'Halo Kak Rina\nSisa: Rp 5.000');
 });
 
+console.log('Paket dari satu resep (soes 40 pcs)');
+{
+  const D = await import('../js/data.js');
+  const m = new Map();
+  const st = { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
+  const S = createStore({ storage: st, key: 'paket' });
+  D.setStore(S);
+  S.seed({
+    bahan: [{ id: 'b1', nama: 'Bahan', isi: 1, satuan: 'kg', harga: 30000 }],
+    resep: [{ id: 'r1', nama: 'Soes', hasil: 40, satuanHasil: 'pcs', kemasan: 200, gasMode: 'rp', gasNilai: 0, tenaga: 0, susut: 0 }],
+    resepBahan: [{ id: 'x1', resepId: 'r1', bahanId: 'b1', jumlah: 1000, satuan: 'g' }],
+    produk: [{ id: 'p1', nama: 'Soes', jenis: 'sendiri', umurSimpan: 2 }],
+    varian: [
+      { id: 'v8', produkId: 'p1', nama: 'Mika 8', harga: 28000, resepId: 'r1', isi: 8, kemasanVarian: 1500 },
+      { id: 'v4', produkId: 'p1', nama: 'Mika 4', harga: 15000, resepId: 'r1', isi: 4, kemasanVarian: '' },
+      { id: 'v1', produkId: 'p1', nama: 'Satuan', harga: 3500, resepId: 'r1' },
+    ],
+  });
+  await uji('HPP varian = isi x HPP per pcs + kemasan paket', () => {
+    assert.equal(D.hppVarian(S.get('varian', 'v8')), 8 * 750 + 1500);
+    assert.equal(D.hppVarian(S.get('varian', 'v4')), 4 * 750 + 4 * 200, 'kemasan kosong ikut resep x isi');
+    assert.equal(D.hppVarian(S.get('varian', 'v1')), 750 + 200, 'data lama tanpa isi = 1');
+  });
+  await uji('rencana produksi menggabung paket jadi pcs dan adonan', () => {
+    const r = D.rencanaProduksi([{ varianId: 'v8', qty: 5, nama: 'a' }, { varianId: 'v4', qty: 2, nama: 'b' }, { varianId: 'v1', qty: 10, nama: 'c' }]);
+    assert.equal(r.resep[0].pcs, 40 + 8 + 10);
+    assert.equal(r.resep[0].kali, 2);
+    assert.equal(r.resep[0].jadi, 80);
+    const bl = D.belanja([{ varianId: 'v8', qty: 5, nama: 'a' }, { varianId: 'v1', qty: 10, nama: 'c' }]);
+    assert.equal(bl.baris[0].jumlah, 2000, '50 pcs = 2 adonan');
+  });
+  await uji('stok 40 pcs dijual sebagai 2 mika isi 8 + 1 mika isi 4 + 5 satuan', () => {
+    S.put('stok', D.batchResep('r1', '2026-11-08', 40, 'produksi'));
+    const o = D.opsiJual();
+    assert.deepEqual(o.map((x) => [x.varianId, x.tersedia]).sort(), [['v1', 40], ['v4', 10], ['v8', 5]]);
+    const al = D.alokasiStok([{ varianId: 'v8', qty: 2, harga: 28000 }, { varianId: 'v4', qty: 1, harga: 15000 }, { varianId: 'v1', qty: 5, harga: 3500 }], 'ps1');
+    assert.ok(!al.error, al.error);
+    assert.equal(al.total, 56000 + 15000 + 17500);
+    assert.equal(al.ops.find((x) => x[1].varianId === 'v8')[1].hpp, 8 * 750 + 1500);
+    S.putMany([['pesanan', { id: 'ps1', status: 'selesai', tglPesan: '2026-11-08' }], ...al.ops]);
+    assert.equal(D.stokGrup()[0].sisa, 40 - 16 - 4 - 5);
+    assert.equal(D.opsiJual().find((x) => x.varianId === 'v8').tersedia, 1);
+  });
+  await uji('stok tidak cukup untuk gabungan paket ditolak', () => {
+    const al = D.alokasiStok([{ varianId: 'v8', qty: 1, harga: 1 }, { varianId: 'v4', qty: 2, harga: 1 }], 'ps2');
+    assert.ok(al.error && al.error.includes('Mika 4') && al.error.includes('tinggal 7 pcs'), al.error);
+  });
+  await uji('pesanan dibatalkan mengembalikan stok', () => {
+    S.put('pesanan', { ...S.get('pesanan', 'ps1'), status: 'batal' });
+    assert.equal(D.stokGrup()[0].sisa, 40);
+  });
+}
+
 console.log('Kalimat penyemangat');
 await uji('120 kalimat, 65/25/10 persen, acak tanpa ulang', async () => {
   const K = await import('../js/kalimat.js');

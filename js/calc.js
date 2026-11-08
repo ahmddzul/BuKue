@@ -85,6 +85,7 @@ export function hitungResep(resep, baris, bahanById, kali = 1) {
     biayaKemasan: kemasan * hasilBersih,
     totalBiaya: biayaAdonan + kemasan * hasilBersih,
     hppPcs, masalah,
+    hppIsi: hasilBersih > 0 ? biayaAdonan / hasilBersih : 0,
   };
 }
 
