@@ -342,3 +342,4 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
 .spl-b { bottom: calc(var(--safe-b) + 70px); right: 16px; transform: scaleX(-1); }
 .auth-spr { position: absolute; top: -6px; right: 0; }
 .auth-etalase { margin: -8px 0 16px; }
+input[type="checkbox"]:not([role]) { accent-color: var(--ink); }

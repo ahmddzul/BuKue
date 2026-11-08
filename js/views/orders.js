@@ -5,6 +5,7 @@ import { TEMPLATE } from '../seed.js';
 import { chips, field, money, kosong, tagBayar, tagStatus, kv, formData } from './ui.js';
 import { itemPesanan } from './home.js';
 import { qrisLokal } from '../qris.js';
+import { pilihSatuKontak, tombolKontak, cariPelangganNomor, normalNomor } from '../kontak.js';
 
 const FILTER = [['aktif', 'Aktif'], ['belum', 'Belum lunas'], ['hariini', 'Hari ini'], ['selesai', 'Selesai'], ['batal', 'Batal'], ['semua', 'Semua']];
 let cari = '';
@@ -398,6 +399,7 @@ export const views = {
         <div class="card">
           ${field('Pelanggan', `<select id="pel" name="pelangganId"><option value="">Tanpa nama</option><option value="_baru" ${baru ? 'selected' : ''}>+ Pelanggan baru</option>${pels.map((p) => `<option value="${h(p.id)}" ${p.id === d.pelangganId ? 'selected' : ''}>${h(p.nama)}</option>`).join('')}</select>`, { id: 'pel' })}
           <div data-pelbaru ${baru ? '' : 'hidden'}>
+            ${tombolKontak('kontak')}
             ${field('Nama', `<input type="text" id="pb-nama" name="pbNama" value="${h(d.pbNama || '')}" autocomplete="off">`, { id: 'pb-nama' })}
             <div class="field"><span class="lbl2">Sapaan</span>${chips('pbSapaan', D.SAPAAN.map((s) => [s, s]), d.pbSapaan ?? D.setelan().sapaanBawaan ?? 'Kak', { label: 'Sapaan' })}</div>
             ${field('Nomor WhatsApp', `<input type="tel" id="pb-wa" name="pbWa" value="${h(d.pbWa || '')}" inputmode="tel" placeholder="08…">`, { id: 'pb-wa' })}
@@ -451,6 +453,22 @@ export const views = {
     },
     change(el, ctx) { views.orderForm.input(el, ctx); },
     actions: {
+      kontak: async (b, e, ctx) => {
+        const form = b.closest('form');
+        const k = await pilihSatuKontak();
+        if (!k) return;
+        const ada = cariPelangganNomor(ctx.S, k.nomor);
+        if (ada) {
+          form.pelangganId.value = ada.id;
+          form.querySelector('[data-pelbaru]').hidden = true;
+          bacaDraft(form);
+          return toast(`${ada.nama} sudah ada, langsung dipilih.`, 3000);
+        }
+        if (k.nama) form.pbNama.value = k.nama;
+        if (k.nomor) form.pbWa.value = k.nomor;
+        bacaDraft(form);
+        toast('Nama dan nomor terisi');
+      },
       tambahItem: (b, e, ctx) => { bacaDraft(b.closest('form')); draft.items.push({ qty: 1 }); ctx.rerender(); setTimeout(() => document.getElementById('v-' + (draft.items.length - 1))?.focus(), 50); },
       hapusItem: (b, e, ctx) => { const form = b.closest('form'); bacaDraft(form); draft.items.splice(Number(b.dataset.i), 1); if (!draft.items.length) draft.items.push({ qty: 1 }); ctx.rerender(); },
     },
@@ -463,10 +481,11 @@ export const views = {
       if (!d.tglAmbil) return toast('Isi tanggal ambil');
       let pelangganId = d.pelangganId;
       const ops = [];
+      if (pelangganId === '_baru' && cariPelangganNomor(S, d.pbWa)) pelangganId = cariPelangganNomor(S, d.pbWa).id;
       if (pelangganId === '_baru') {
         if (!d.pbNama) return toast('Isi nama pelanggan baru');
         pelangganId = 'pl' + Date.now().toString(36);
-        ops.push(['pelanggan', { id: pelangganId, nama: d.pbNama, sapaan: d.pbSapaan ?? 'Kak', wa: d.pbWa || '', alamat: d.alamat || '', catatan: '' }]);
+        ops.push(['pelanggan', { id: pelangganId, nama: d.pbNama, sapaan: d.pbSapaan ?? 'Kak', wa: normalNomor(d.pbWa) || '', alamat: d.alamat || '', catatan: '' }]);
       }
       const id = d._for === 'baru' ? 'ps' + Date.now().toString(36) : d._for;
       const lama = d._for === 'baru' ? null : S.get('pesanan', id);

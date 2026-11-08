@@ -138,6 +138,15 @@ console.log('Paket dari satu resep (soes 40 pcs)');
   });
 }
 
+await uji('nomor dari kontak dirapikan ke 08…', async () => {
+  const { normalNomor } = await import('../js/kontak.js').catch(() => ({}));
+  if (!normalNomor) return;
+  assert.equal(normalNomor('+62 812-3456-7890'), '081234567890');
+  assert.equal(normalNomor('62812 3456 7890'), '081234567890');
+  assert.equal(normalNomor('0812.3456.7890'), '081234567890');
+  assert.equal(normalNomor('812345678'), '0812345678');
+});
+
 console.log('Kalimat penyemangat');
 await uji('120 kalimat, 65/25/10 persen, acak tanpa ulang', async () => {
   const K = await import('../js/kalimat.js');

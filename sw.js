@@ -1,9 +1,9 @@
 // Ambil dari jaringan dulu untuk file aplikasi, pakai simpanan hanya saat offline.
-const VERSI = '1.1.1';
+const VERSI = '1.2.0';
 const CACHE = 'bukue-' + VERSI;
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'fonts/PlusJakartaSans.woff2',
-  'js/app.js', 'js/shared.js', 'js/config.js', 'js/calc.js', 'js/store.js', 'js/data.js', 'js/util.js', 'js/seed.js', 'js/qris.js', 'js/kalimat.js', 'js/splash.js', 'js/ilustrasi.js', 'js/foto.js',
+  'js/app.js', 'js/shared.js', 'js/config.js', 'js/calc.js', 'js/store.js', 'js/data.js', 'js/util.js', 'js/seed.js', 'js/qris.js', 'js/kalimat.js', 'js/splash.js', 'js/ilustrasi.js', 'js/foto.js', 'js/kontak.js',
   'js/views/ui.js', 'js/views/home.js', 'js/views/orders.js', 'js/views/products.js', 'js/views/more.js', 'js/views/production.js', 'js/views/auth.js', 'js/views/stok.js', 'js/views/openpo.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];

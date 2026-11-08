@@ -2,7 +2,7 @@
 
 Aplikasi pencatatan bisnis kue rumahan di HP: pesanan PO, HPP dari harga bahan, jadwal produksi dan daftar belanja, serta tagihan WhatsApp dengan QRIS. Data tersimpan di Google Sheet milik kamu sendiri, dan bisa dipakai di beberapa HP sekaligus dengan satu akun.
 
-Versi sekarang: **1.1.1**
+Versi sekarang: **1.2.0**
 
 ---
 
@@ -23,6 +23,7 @@ Versi sekarang: **1.1.1**
 - **Template pesan** yang bisa diubah sendiri, dengan kata kunci seperti `{nama}`, `{total}`, `{sisa}`. Baris yang kata kuncinya kosong otomatis hilang.
 - **Produksi**: total yang harus dibuat per tanggal, daftar pesanan, daftar belanja dari resep (bisa dikurangi stok bahan kalau fitur stok dinyalakan), dan tombol "Produksi selesai" yang mengubah pesanan jadi Siap.
 - **Beranda**: kartu untung per periode (7 hari, 30 hari, bulanan, tahunan dengan grafik 12 bulan, semua), kartu pesanan masuk dengan rincian lunas, DP, dan belum dibayar, produksi hari ini dan besok, tagihan berjalan, produk paling laku dan paling cuan, pelanggan setia.
+- **Ambil dari kontak HP** (Android, Chrome): isi nama dan nomor WA pelanggan langsung dari buku telepon, atau impor banyak kontak sekaligus di menu Pelanggan. Nomor dirapikan otomatis ke format 08…, dan nomor yang sudah ada tidak didobel. Di iPhone fitur ini belum didukung Safari, jadi nomor tetap diketik.
 - **Pelanggan**: riwayat pesanan, total belanja, tagihan berjalan, sapaan, WA, alamat, catatan.
 - **Akun**: buat akun sekali, HP lain tinggal masuk. Pemilik bisa menambah akun anggota (misalnya asisten). Bisa melihat HP yang sedang masuk dan mengeluarkan HP lain.
 - **Offline**: semua perubahan disimpan di HP dulu dan dikirim otomatis saat ada sinyal.

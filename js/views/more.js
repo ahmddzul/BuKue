@@ -9,6 +9,7 @@ import { qrisLokal, simpanQrisLokal } from '../qris.js';
 import { prefs, apiPublik, VERSI_APP } from '../shared.js';
 import { tampilkanSplash, SEMUA } from '../splash.js';
 import { etalase, sprinkle } from '../ilustrasi.js';
+import { bisaKontak, ambilKontak, pilihSatuKontak, tombolKontak, cariPelangganNomor, normalNomor } from '../kontak.js';
 
 const { num } = C;
 const IG = 'https://instagram.com/ahmddzul';
@@ -159,10 +160,11 @@ export const views = {
     render(p, ctx) {
       const S = ctx.S;
       const all = S.all('pelanggan').sort((a, b) => a.nama.localeCompare(b.nama));
-      if (!all.length) return kosong('users', 'Belum ada pelanggan', 'Pelanggan juga otomatis tersimpan saat kamu mencatat pesanan.', `<button class="btn pri" data-go="customerForm">${ic('plus')}Tambah pelanggan</button>`);
+      const impor = bisaKontak() ? `<button class="btn" data-act="impor">${ic('users')}Impor dari kontak HP</button>` : '';
+      if (!all.length) return kosong('users', 'Belum ada pelanggan', 'Pelanggan juga otomatis tersimpan saat kamu mencatat pesanan.', `<div class="btns">${impor}<button class="btn pri" data-go="customerForm">${ic('plus')}Tambah pelanggan</button></div>`);
       const q = cariPel.toLowerCase();
       const list = all.filter((x) => !q || (x.nama + ' ' + (x.wa || '')).toLowerCase().includes(q));
-      return `<div class="field"><label for="cari-pel" class="sr">Cari pelanggan</label><input type="search" id="cari-pel" placeholder="Cari nama atau nomor" value="${h(cariPel)}"></div>
+      return `${impor ? `<div class="btns" style="margin-bottom:10px">${impor}</div>` : ''}<div class="field"><label for="cari-pel" class="sr">Cari pelanggan</label><input type="search" id="cari-pel" placeholder="Cari nama atau nomor" value="${h(cariPel)}"></div>
         ${list.length ? `<div class="list stagger">${list.map((x, k) => {
           const ps = S.where('pesanan', 'pelangganId', x.id).filter((p) => p.status !== 'batal');
           const sisa = ps.reduce((s, p) => s + D.pesananInfo(p).sisa, 0);
@@ -175,6 +177,38 @@ export const views = {
         clearTimeout(views.customers._t);
         views.customers._t = setTimeout(() => { ctx.rerender(); const i = document.getElementById('cari-pel'); i?.focus(); i?.setSelectionRange(i.value.length, i.value.length); }, 200);
       }
+    },
+    actions: {
+      impor: async (b, e, ctx) => {
+        let list;
+        try { list = await ambilKontak(true); } catch { return toast('Buku telepon tidak bisa dibuka di HP ini.'); }
+        if (!list.length) return;
+        const S = ctx.S;
+        const sudah = new Set(S.all('pelanggan').map((p) => normalNomor(p.wa)).filter(Boolean));
+        const baris = list.map((k, i) => {
+          const n = k.nomor[0] || '';
+          const ada = n && sudah.has(n);
+          if (n) sudah.add(n);
+          return { i, nama: k.nama || n, nomor: n, ada };
+        });
+        const bisa = baris.filter((x) => !x.ada);
+        openSheet({
+          html: `<h2 id="sheet-t">Impor ${list.length} kontak</h2>
+            <p class="small muted" style="margin-top:-6px">${bisa.length} kontak akan ditambahkan sebagai pelanggan${baris.length - bisa.length ? `, ${baris.length - bisa.length} dilewati karena nomornya sudah ada` : ''}. Hapus centang kalau ada yang tidak perlu.</p>
+            <form><div class="list">${baris.map((x) => `<label class="item" style="cursor:pointer"><input type="checkbox" name="pilih[]" value="${x.i}" ${x.ada ? 'disabled' : 'checked'} style="width:22px;height:22px;flex:none"><div class="grow"><div class="t ell">${h(x.nama)}</div><div class="s">${h(x.nomor || 'Tanpa nomor')}${x.ada ? ' · sudah ada' : ''}</div></div></label>`).join('')}</div>
+            <button class="btn pri block" ${bisa.length ? '' : 'disabled'}>${ic('check')}Tambahkan pelanggan</button></form>`,
+          submit: (form) => {
+            const pilih = new Set(new FormData(form).getAll('pilih[]').map(Number));
+            const sapaan = D.setelan().sapaanBawaan ?? 'Kak';
+            const ops = baris.filter((x) => pilih.has(x.i) && !x.ada).map((x) => ['pelanggan', { nama: x.nama, sapaan, wa: x.nomor, alamat: '', catatan: '' }]);
+            if (!ops.length) return toast('Tidak ada kontak yang dipilih');
+            S.putMany(ops);
+            closeSheet();
+            toast(`${ops.length} pelanggan ditambahkan`);
+            ctx.rerender();
+          },
+        });
+      },
     },
   },
 
@@ -207,6 +241,7 @@ export const views = {
     render({ id }, ctx) {
       const x = id ? ctx.S.get('pelanggan', id) || {} : { sapaan: D.setelan().sapaanBawaan ?? 'Kak' };
       return `<form novalidate><div class="card">
+        ${id ? '' : tombolKontak('kontak')}
         ${field('Nama', `<input type="text" id="c-nama" name="nama" value="${h(x.nama || '')}" required>`, { id: 'c-nama' })}
         <div class="field"><span class="lbl2">Sapaan</span>${chips('sapaan', D.SAPAAN.map((s) => [s, s]), x.sapaan ?? '', { label: 'Sapaan' })}<div class="hint">Ketuk lagi untuk tanpa sapaan.</div></div>
         ${field('Nomor WhatsApp', `<input type="tel" id="c-wa" name="wa" inputmode="tel" value="${h(x.wa || '')}" placeholder="08…">`, { id: 'c-wa' })}
@@ -217,6 +252,16 @@ export const views = {
       ${id ? `<button type="button" class="btn danger block" data-act="hapus" style="margin-top:10px">${ic('trash')}Hapus pelanggan</button>` : ''}</form>`;
     },
     actions: {
+      kontak: async (b, e, ctx) => {
+        const k = await pilihSatuKontak();
+        if (!k) return;
+        const ada = cariPelangganNomor(ctx.S, k.nomor);
+        if (ada) return toast(`Nomor ini sudah tersimpan sebagai ${ada.nama}.`, 3500);
+        const form = b.closest('form');
+        if (k.nama) form.nama.value = k.nama;
+        if (k.nomor) form.wa.value = k.nomor;
+        toast('Nama dan nomor terisi');
+      },
       hapus: async (b, e, ctx) => {
         if (!(await konfirmasi('Hapus pelanggan?', 'Pesanan lama tetap ada tapi tanpa nama pelanggan.', { ya: 'Hapus', bahaya: true }))) return;
         ctx.S.remove('pelanggan', currentId());
@@ -227,7 +272,9 @@ export const views = {
       const f = formData(form);
       if (!f.nama) return toast('Isi nama pelanggan');
       const id = currentId();
-      ctx.S.put('pelanggan', { ...(id ? ctx.S.get('pelanggan', id) : {}), ...(id ? { id } : {}), nama: f.nama, sapaan: f.sapaan, wa: f.wa, alamat: f.alamat, catatan: f.catatan });
+      const dobel = cariPelangganNomor(ctx.S, f.wa);
+      if (dobel && dobel.id !== id) return toast(`Nomor ini sudah dipakai ${dobel.nama}.`, 3500);
+      ctx.S.put('pelanggan', { ...(id ? ctx.S.get('pelanggan', id) : {}), ...(id ? { id } : {}), nama: f.nama, sapaan: f.sapaan, wa: normalNomor(f.wa) || f.wa, alamat: f.alamat, catatan: f.catatan });
       toast('Pelanggan tersimpan');
       ctx.back();
     },
@@ -360,6 +407,7 @@ export const views = {
         ['Di iPhone, teks tagihan tidak ikut terkirim bersama QRIS.', 'WhatsApp di iPhone kadang hanya menerima gambar. BuKue sudah menyalin teksnya lebih dulu, jadi tinggal tempel di kolom chat.'],
         ['Di mana data saya disimpan?', 'Di Google Sheet milik kamu sendiri. Kata sandi disimpan dalam bentuk acak (hash), bukan teks asli. Gambar QRIS ada di folder Google Drive kamu.'],
         ['Satu resep mau dijual dalam beberapa paket, misalnya soes 40 pcs jadi mika isi 8, isi 4, dan satuan?', 'Buat resep soes dengan hasil 40 pcs. Di produk Kue Soes, buat varian Mika isi 8, Mika isi 4, dan Satuan, semuanya memakai resep soes, lalu isi "Isi (pcs dari resep)" dan "Kemasan per paket". HPP, jadwal produksi, daftar belanja, dan stok ready otomatis menghitung dalam pcs.'],
+        ['Bisa ambil nomor pelanggan dari kontak HP?', 'Bisa di Android (Chrome). Di form pelanggan baru ada tombol "Ambil dari kontak HP", dan di menu Pelanggan ada "Impor dari kontak HP" untuk banyak kontak sekaligus. BuKue hanya membaca kontak yang kamu pilih. Di iPhone, Safari belum mendukung fitur ini.'],
         ['Bagaimana kelebihan produksi masuk ke stok ready?', 'Di menu Produksi, ketuk "Produksi selesai" lalu isi jumlah yang benar-benar jadi. Kalau lebih dari pesanan, kelebihannya otomatis masuk Stok ready.'],
         ['Apakah kue yang dibuang mengurangi untung?', 'Ya. Sisa buatan sendiri yang dibuang dihitung rugi senilai modalnya. Titipan yang rusak atau dikembalikan tidak mengurangi untungmu.'],
         ['Bagaimana menghitung setoran ke penitip?', 'Buka Titipan & penitip, pilih penitip. "Belum disetor" berisi semua titipan yang terjual sejak setoran terakhir dikali harga setor. Setelah transfer, ketuk "Tandai sudah disetor".'],
