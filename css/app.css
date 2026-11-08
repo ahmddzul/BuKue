@@ -42,7 +42,8 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+html, body { margin: 0; background: var(--bg); }
+html.gulir-dalam, html.gulir-dalam body { height: 100%; overflow: hidden; }
 body {
   font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   color: var(--text); font-size: 15px; line-height: 1.45;
@@ -58,6 +59,12 @@ svg.i { width: 22px; height: 22px; flex: none; stroke: currentColor; fill: none;
 
 /* Kerangka: hanya #view yang digulir (pelajaran iPhone) */
 #app { position: fixed; inset: 0; display: flex; flex-direction: column; height: var(--app-h, 100%); }
+/* Gulir seluruh halaman (Android, desktop): judul menempel di atas, menu bawah tetap di bawah layar. */
+html.gulir-halaman { overflow-x: hidden; }
+html.gulir-halaman #app { position: relative; inset: auto; display: block; height: auto; min-height: 100vh; min-height: 100dvh; }
+html.gulir-halaman .top { position: sticky; top: 0; z-index: 15; }
+html.gulir-halaman #view { overflow: visible; }
+html.gulir-halaman .nav, html.gulir-halaman .fab { position: fixed; }
 .top {
   flex: none; display: flex; align-items: center; gap: 8px;
   padding: calc(var(--safe-t) + 10px) max(16px, calc((100% - 720px) / 2)) 10px; background: var(--bg); min-height: 58px;

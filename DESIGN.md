@@ -99,5 +99,6 @@ Semua mati dengan `prefers-reduced-motion: reduce`.
 ## Tata letak
 
 - Mobile-first, 320 px sampai desktop. Isi dibatasi 720 px di layar lebar.
-- Hanya area isi (`#view`) yang digulir. Judul menempel di atas, menu bawah menempel di bawah (perbaikan gulir iPhone).
+- iPhone/iPad: hanya area isi (`#view`) yang digulir (perbaikan gulir iPhone).
+- Android dan desktop: seluruh halaman yang digulir, supaya screenshot panjang (scroll capture) bisa dipakai. Judul menempel di atas dengan `position: sticky`, menu bawah dan tombol tambah tetap di bawah layar.
 - Target sentuh minimal 44 px.

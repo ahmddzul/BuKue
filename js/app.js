@@ -16,6 +16,8 @@ import { tampilkanSplash } from './splash.js';
 import { mulaiFoto } from './foto.js';
 
 const LS = localStorage;
+// Lihat index.html: iPhone memakai gulir di dalam #view, HP lain menggulir seluruh halaman.
+const GULIR_DALAM = document.documentElement.classList.contains('gulir-dalam');
 const views = { ...V_HOME, ...V_ORDERS, ...V_PROD, ...V_MORE, ...V_PRODUKSI, ...V_STOK, ...V_PO };
 const TABS = [
   ['home', 'Beranda', 'home'],
@@ -99,7 +101,7 @@ function render(scrollTop) {
   view.innerHTML = `<div class="wrap ${scrollTop ? 'page-in' : ''}">${html}</div>`;
   const fab = typeof v.fab === 'function' ? v.fab(c.params, ctx) : v.fab;
   app.querySelector('#fab-slot').innerHTML = fab ? `<button class="fab" data-shell="fab" aria-label="${h(fab.label)}">${ic(fab.icon || 'plus')}</button>` : '';
-  if (scrollTop) view.scrollTop = 0;
+  if (scrollTop) { view.scrollTop = 0; if (!GULIR_DALAM) window.scrollTo(0, 0); }
   v.mount?.(view, c.params, ctx);
 }
 
@@ -128,7 +130,7 @@ function bindShell(app) {
     const tabBtn = e.target.closest('[data-tab]');
     if (tabBtn) {
       const t = tabBtn.dataset.tab;
-      if (t === nav.tab && !nav.stack.length) { $view().scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      if (t === nav.tab && !nav.stack.length) { (GULIR_DALAM ? $view() : window).scrollTo({ top: 0, behavior: 'smooth' }); return; }
       ctx.tab(t);
       return;
     }
@@ -238,6 +240,7 @@ function sesiBerakhir(info) {
 
 // ---------- Tinggi layar iPhone ----------
 function aturTinggi() {
+  if (!GULIR_DALAM) return;
   document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
   window.scrollTo(0, 0);
 }

@@ -2,7 +2,7 @@
 
 Aplikasi pencatatan bisnis kue rumahan di HP: pesanan PO, HPP dari harga bahan, jadwal produksi dan daftar belanja, serta tagihan WhatsApp dengan QRIS. Data tersimpan di Google Sheet milik kamu sendiri, dan bisa dipakai di beberapa HP sekaligus dengan satu akun.
 
-Versi sekarang: **1.1.0**
+Versi sekarang: **1.1.1**
 
 ---
 
@@ -163,6 +163,7 @@ Kalau HP hilang: **Pengaturan** > **HP yang masuk** > **Keluarkan semua HP lain*
 | Tampilan tidak berubah setelah update | Tutup BuKue, buka lagi, lalu ketuk **Muat ulang** di kartu versi baru. |
 | Angka untung Rp 0 | Untung hanya dari pesanan berstatus **Selesai**. Penjualan dari stok ready langsung tercatat Selesai. |
 | Stok ready, titipan, atau open PO tidak muncul di HP lain | `Code.gs` belum diperbarui ke 1.0.0. Lihat **Cara memperbarui**. |
+| Screenshot panjang (scroll) tidak bisa | Perbarui ke 1.1.1 atau lebih baru. Di Android, seluruh halaman sekarang bisa digulir sehingga screenshot panjang berfungsi. Di iPhone, gunakan opsi **Halaman penuh** saat screenshot di Safari. |
 | Layar pembuka tidak mau muncul | Cek **Pengaturan** > **Kalimat penyemangat** > **Layar pembuka**. Pengaturan ini per HP. |
 
 ---
